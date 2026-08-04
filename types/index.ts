@@ -122,6 +122,18 @@ export interface BillingPeriod {
   created_at: string
 }
 
+export interface Payment {
+  id: string
+  client_id: string
+  stripe_payment_intent_id: string | null
+  amount_cents: number
+  status: 'succeeded' | 'failed'
+  kind: 'first_month' | 'renewal'
+  label: string
+  failure_message: string | null
+  created_at: string
+}
+
 export interface StripeEvent {
   id: string
   type: string

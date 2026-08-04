@@ -55,8 +55,40 @@ export async function POST(request: Request) {
       const si = event.data.object as Stripe.SetupIntent
       await saveCardFromSetupIntent(si.id)
     }
-    // payment_intent.succeeded / payment_intent.payment_failed: recorded in
-    // stripe_events above; charge handling ships in v0.1.7-b.
+
+    // Payment reconciliation backstop (v0.1.7-b). The charge path records
+    // outcomes synchronously; these handlers cover the rare gap where the
+    // charge succeeded but the ledger insert failed. Only events carrying
+    // our careclub_client_id metadata are ours to record.
+    if (event.type === 'payment_intent.succeeded' || event.type === 'payment_intent.payment_failed') {
+      const pi = event.data.object as Stripe.PaymentIntent
+      const clientId = pi.metadata?.careclub_client_id
+      if (clientId) {
+        const { data: existingRow } = await svc
+          .from('payments')
+          .select('id, status')
+          .eq('stripe_payment_intent_id', pi.id)
+          .limit(1)
+        const row = (existingRow || [])[0]
+        const succeeded = event.type === 'payment_intent.succeeded'
+        if (!row) {
+          await svc.from('payments').insert({
+            client_id: clientId,
+            stripe_payment_intent_id: pi.id,
+            amount_cents: pi.amount,
+            status: succeeded ? 'succeeded' : 'failed',
+            kind: pi.metadata?.careclub_kind === 'renewal' ? 'renewal' : 'first_month',
+            label: pi.metadata?.careclub_label || 'Membership payment',
+            failure_message: succeeded ? null : pi.last_payment_error?.message || 'The payment failed.',
+          })
+        } else if (succeeded && row.status !== 'succeeded') {
+          await svc
+            .from('payments')
+            .update({ status: 'succeeded', failure_message: null })
+            .eq('id', row.id)
+        }
+      }
+    }
   } catch {
     // The event is recorded; processing failures must not make Stripe retry
     // forever against a poison event. Acknowledge and surface via the profile.

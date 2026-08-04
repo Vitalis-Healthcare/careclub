@@ -5,6 +5,8 @@ import { PageHead } from '@/components/ui/PageChrome'
 import BuildWeekButton from '@/components/schedule/BuildWeekButton'
 import ShiftCard from '@/components/schedule/ShiftCard'
 import { parseMonday, currentMonday, addDays, BLOCK_LABELS } from '@/lib/patterns/validate'
+import { hourBankSnapshots } from '@/lib/billing/periods'
+import { todayInEastern } from '@/lib/billing/dates'
 import type { BlockStart } from '@/lib/patterns/validate'
 
 interface ShiftRow {
@@ -58,6 +60,12 @@ export default async function SchedulePage({
 
   const allClusters = clusters || []
   const allShifts = (shifts || []) as ShiftRow[]
+
+  // The cancel assist (v0.1.9-b): a read-only hour-bank snapshot for the
+  // members on the board, handed into each visit's modal. No writes here;
+  // the profile's Hour Bank card owns the write-through.
+  const memberIds = Array.from(new Set(allShifts.map(s => s.client_id)))
+  const bank = await hourBankSnapshots(svc, memberIds, todayInEastern())
   const isStaff = Boolean(user)
 
   const zoneNameById = new Map<string, string>()
@@ -249,6 +257,8 @@ export default async function SchedulePage({
                                 status: s.status,
                                 is_overage: Boolean(s.is_overage),
                                 cancel_type: s.cancel_type,
+                                freeCancelsRemaining: bank.get(s.client_id)?.freeCancelsRemaining ?? null,
+                                freeCancelsAllowance: bank.get(s.client_id)?.freeCancelsAllowance ?? null,
                               }}
                             />
                           )

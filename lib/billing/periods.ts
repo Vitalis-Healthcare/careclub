@@ -269,3 +269,97 @@ export async function ensureAndSyncPeriods(
   displays.reverse()
   return displays
 }
+
+// The window containing `today`, or null when the member has no live period
+// yet (billing start in the future).
+export function currentWindow(billingStart: string, today: string): PeriodWindow | null {
+  const windows = periodWindows(billingStart, today)
+  if (windows.length === 0) return null
+  const last = windows[windows.length - 1]
+  return today >= last.start && today < last.endExclusive ? last : null
+}
+
+export interface HourBankSnapshot {
+  periodStart: string
+  periodEndInclusive: string
+  hoursIncluded: number
+  hoursUsed: number
+  committedHours: number
+  hoursRemaining: number
+  overageRateCents: number
+  freeCancelsRemaining: number
+  freeCancelsAllowance: number
+}
+
+// Read-only bulk snapshot of each member's CURRENT period, for surfaces
+// that must not write (the schedule board, the Build Week summary). Three
+// queries total regardless of member count. Members without a live period
+// (no billing start, or the first anniversary has not arrived) are simply
+// absent from the returned map. Uses the member's current tier for the
+// included-hours figure; the profile's Hour Bank card (write-through row
+// snapshot) remains authoritative.
+export async function hourBankSnapshots(
+  svc: Svc,
+  clientIds: string[],
+  today: string
+): Promise<Map<string, HourBankSnapshot>> {
+  const result = new Map<string, HourBankSnapshot>()
+  if (clientIds.length === 0) return result
+
+  const { data: clientData } = await svc
+    .from('clients')
+    .select('id, billing_start_date, tier_id')
+    .in('id', clientIds)
+    .not('billing_start_date', 'is', null)
+
+  const clients = clientData || []
+  if (clients.length === 0) return result
+
+  const { data: tierData } = await svc
+    .from('tiers')
+    .select('id, hours_per_month, overage_rate_cents, free_cancels_per_period')
+
+  const tierById = new Map((tierData || []).map((t) => [t.id as string, t]))
+
+  const windowByClient = new Map<string, PeriodWindow>()
+  let minStart: string | null = null
+  for (const c of clients) {
+    const w = currentWindow(String(c.billing_start_date), today)
+    if (!w) continue
+    windowByClient.set(c.id as string, w)
+    if (minStart === null || w.start < minStart) minStart = w.start
+  }
+  if (windowByClient.size === 0 || minStart === null) return result
+
+  const { data: shiftData } = await svc
+    .from('shifts')
+    .select('client_id, shift_date, duration_hours, status, is_weekend, cancel_type')
+    .in('client_id', Array.from(windowByClient.keys()))
+    .gte('shift_date', minStart)
+
+  const shifts = (shiftData || []) as (ShiftForAccounting & { client_id: string })[]
+
+  for (const c of clients) {
+    const w = windowByClient.get(c.id as string)
+    if (!w) continue
+    const tier = tierById.get(String(c.tier_id))
+    if (!tier) continue
+    const own = shifts.filter((s) => s.client_id === c.id)
+    const acc = computeAccounting(own, w)
+    const included = Number(tier.hours_per_month)
+    const allowance = Number(tier.free_cancels_per_period)
+    result.set(c.id as string, {
+      periodStart: w.start,
+      periodEndInclusive: w.endInclusive,
+      hoursIncluded: included,
+      hoursUsed: acc.hoursUsed,
+      committedHours: acc.committedHours,
+      hoursRemaining: Math.max(0, included - acc.hoursUsed),
+      overageRateCents: Number(tier.overage_rate_cents),
+      freeCancelsRemaining: Math.max(0, allowance - acc.freeCancelsUsed),
+      freeCancelsAllowance: allowance,
+    })
+  }
+
+  return result
+}

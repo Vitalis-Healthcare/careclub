@@ -18,6 +18,8 @@ export interface ShiftForModal {
   status: string
   is_overage: boolean
   cancel_type: string | null
+  freeCancelsRemaining: number | null
+  freeCancelsAllowance: number | null
 }
 
 const actionButton = {
@@ -47,6 +49,14 @@ export default function ShiftModal({
   const [cancelOpen, setCancelOpen] = useState(false)
 
   const shortNotice = isShortNotice(shift.shift_date, shift.start_time)
+
+  // The cancel assist (v0.1.9-b): the software does the arithmetic, Staff
+  // keep the judgment. Free is recommended only when 48-hour notice stands
+  // AND the member still has free cancels this period (unknown period means
+  // benefit of the doubt).
+  const freeLeft = shift.freeCancelsRemaining
+  const allowance = shift.freeCancelsAllowance
+  const recommendFree = !shortNotice && (freeLeft === null || freeLeft > 0)
 
   const act = async (action: string, cancelType?: 'free' | 'forfeit') => {
     setBusy(true)
@@ -158,27 +168,44 @@ export default function ShiftModal({
 
         {shift.status === 'scheduled' && cancelOpen && (
           <>
-            {shortNotice && (
-              <div
-                style={{
-                  background: 'var(--amber-glow)',
-                  border: '1px solid var(--amber)',
-                  borderRadius: 8,
-                  padding: '12px 14px',
-                  fontSize: 12.5,
-                  color: 'var(--amber)',
-                  marginBottom: 12,
-                }}
-              >
-                This visit starts in under 48 hours — Club policy books short-notice cancellations as a forfeit. The choice stays yours.
-              </div>
+            <div
+              style={{
+                background: recommendFree ? 'var(--green-glow)' : 'var(--amber-glow)',
+                border: `1px solid ${recommendFree ? 'var(--green-bright)' : 'var(--amber)'}`,
+                borderRadius: 8,
+                padding: '12px 14px',
+                fontSize: 12.5,
+                color: recommendFree ? 'var(--green-bright)' : 'var(--amber)',
+                marginBottom: 12,
+              }}
+            >
+              {recommendFree
+                ? freeLeft !== null && allowance !== null
+                  ? `More than 48 hours' notice · ${freeLeft} of ${allowance} free cancels remaining — this cancellation is free.`
+                  : `More than 48 hours' notice — this cancellation is free.`
+                : shortNotice
+                  ? `This visit starts in under 48 hours — Club policy books short-notice cancellations as a forfeit of the visit's 2 hours. The choice stays yours.`
+                  : `48-hour notice was given, but no free cancels remain this period — Club policy books this as a forfeit of the visit's 2 hours. The choice stays yours.`}
+            </div>
+            {recommendFree ? (
+              <>
+                <button onClick={() => act('cancel', 'free')} disabled={busy} style={{ ...actionButton, background: 'var(--green-glow)', color: 'var(--green-bright)', border: '1px solid var(--green-bright)' }}>
+                  Cancel — free (recommended)
+                </button>
+                <button onClick={() => act('cancel', 'forfeit')} disabled={busy} style={{ ...actionButton, color: 'var(--red)' }}>
+                  Cancel — forfeit the visit's 2 hours
+                </button>
+              </>
+            ) : (
+              <>
+                <button onClick={() => act('cancel', 'forfeit')} disabled={busy} style={{ ...actionButton, color: 'var(--red)', border: '1px solid var(--red)' }}>
+                  Cancel — forfeit the visit's 2 hours (recommended)
+                </button>
+                <button onClick={() => act('cancel', 'free')} disabled={busy} style={actionButton}>
+                  Cancel — free (override)
+                </button>
+              </>
             )}
-            <button onClick={() => act('cancel', 'free')} disabled={busy} style={actionButton}>
-              Cancel — free (48-hour notice given)
-            </button>
-            <button onClick={() => act('cancel', 'forfeit')} disabled={busy} style={{ ...actionButton, color: 'var(--red)' }}>
-              Cancel — forfeit the visit
-            </button>
             <button onClick={() => setCancelOpen(false)} disabled={busy} style={{ ...actionButton, color: 'var(--text-dim)' }}>
               Back
             </button>

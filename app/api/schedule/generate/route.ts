@@ -2,6 +2,9 @@ import { NextResponse } from 'next/server'
 import { createClient } from '@/lib/supabase/server'
 import { createServiceClient } from '@/lib/supabase/service'
 import { parseMonday, addDays, BLOCK_END, VISIT_HOURS } from '@/lib/patterns/validate'
+import { hourBankSnapshots } from '@/lib/billing/periods'
+import { todayInEastern } from '@/lib/billing/dates'
+import { formatMoney } from '@/lib/agreements/content'
 import type { BlockStart } from '@/lib/patterns/validate'
 
 // "Build the week": materializes shifts from every active, placed member's
@@ -46,7 +49,7 @@ export async function POST(request: Request) {
       { data: clusters },
       { data: existingShifts },
     ] = await Promise.all([
-      svc.from('clients').select('id, cluster_id, status').eq('status', 'active').not('cluster_id', 'is', null),
+      svc.from('clients').select('id, name, cluster_id, status').eq('status', 'active').not('cluster_id', 'is', null),
       svc.from('clusters').select('id, caregiver_id, status'),
       svc.from('shifts').select('client_id, shift_date').gte('shift_date', weekStart).lte('shift_date', weekEnd),
     ])
@@ -123,7 +126,29 @@ export async function POST(request: Request) {
       }
     }
 
-    return NextResponse.json({ created: inserts.length, skipped })
+    // The zero-hours warning (v0.1.9-b, warn-and-allow by ruling): after
+    // the visits are booked, snapshot each affected member's current period
+    // and report anyone whose schedule now runs past the hour bank. The
+    // snapshot is taken AFTER the insert so the new visits count as
+    // committed hours.
+    const overageNotes: string[] = []
+    const createdMemberIds = Array.from(new Set(inserts.map(i => i.client_id)))
+    if (createdMemberIds.length > 0) {
+      const nameById = new Map(activeMembers.map(m => [m.id as string, (m.name as string) || 'A member']))
+      const bank = await hourBankSnapshots(svc, createdMemberIds, todayInEastern())
+      for (const id of createdMemberIds) {
+        const snap = bank.get(id)
+        if (!snap) continue
+        const excess = snap.hoursUsed + snap.committedHours - snap.hoursIncluded
+        if (excess > 0) {
+          overageNotes.push(
+            `${nameById.get(id)}: scheduled visits now run ${excess} ${excess === 1 ? 'hr' : 'hrs'} past the hour bank this period — overage at ${formatMoney(snap.overageRateCents)}/hr applies as they complete`
+          )
+        }
+      }
+    }
+
+    return NextResponse.json({ created: inserts.length, skipped, overage_notes: overageNotes })
   } catch {
     return NextResponse.json({ error: 'Could not build the week. Please try again.' }, { status: 500 })
   }

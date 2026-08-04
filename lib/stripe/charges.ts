@@ -123,3 +123,80 @@ export async function chargeFirstMonth(params: {
 export function firstMonthSummary(amountCents: number, tierName: string): string {
   return `${formatMoney(amountCents)} \u2014 first month of ${tierName}`
 }
+
+// The anniversary renewal charge (v0.1.7-c cron). Idempotency lives in the
+// due-date math: a succeeded renewal advances the anniversary a month, so the
+// member stops being due. The cron additionally skips anyone with a charge
+// attempt in the last 3 days, which spaces retries after declines and covers
+// the ledger-insert-failed gap until the webhook reconciles it.
+export async function chargeRenewal(params: {
+  clientId: string
+  clientName: string
+  customerId: string
+  paymentMethodId: string
+  amountCents: number
+  tierName: string
+  anniversaryDate: string
+}): Promise<{ ok: true } | { ok: false; declined: boolean; error: string }> {
+  const svc = createServiceClient()
+  const label = `Renewal \u2014 ${params.tierName}`
+  const stripe = getStripe()
+
+  let intent: Stripe.PaymentIntent
+  try {
+    intent = await stripe.paymentIntents.create({
+      amount: params.amountCents,
+      currency: 'usd',
+      customer: params.customerId,
+      payment_method: params.paymentMethodId,
+      off_session: true,
+      confirm: true,
+      description: `${label} (${params.clientName}, ${params.anniversaryDate})`,
+      metadata: {
+        careclub_client_id: params.clientId,
+        careclub_kind: 'renewal',
+        careclub_label: label,
+      },
+    })
+  } catch (err) {
+    if (err instanceof Stripe.errors.StripeCardError) {
+      const declineMessage = err.message || 'The card was declined.'
+      const piId =
+        err.payment_intent && typeof err.payment_intent === 'object' ? err.payment_intent.id : null
+      try {
+        await svc.from('payments').insert({
+          client_id: params.clientId,
+          stripe_payment_intent_id: piId,
+          amount_cents: params.amountCents,
+          status: 'failed',
+          kind: 'renewal',
+          label,
+          failure_message: declineMessage,
+        })
+      } catch {
+        // Surfaced via the cron summary regardless.
+      }
+      return { ok: false, declined: true, error: declineMessage }
+    }
+    return { ok: false, declined: false, error: 'Could not reach Stripe for the renewal charge.' }
+  }
+
+  if (intent.status !== 'succeeded') {
+    return { ok: false, declined: true, error: `The payment did not complete (status: ${intent.status}).` }
+  }
+
+  try {
+    await svc.from('payments').insert({
+      client_id: params.clientId,
+      stripe_payment_intent_id: intent.id,
+      amount_cents: params.amountCents,
+      status: 'succeeded',
+      kind: 'renewal',
+      label,
+    })
+  } catch {
+    // Webhook reconciles from payment_intent.succeeded.
+  }
+
+  return { ok: true }
+}

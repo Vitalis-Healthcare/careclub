@@ -1,4 +1,4 @@
-import { addMonthsClamped } from '@/lib/billing/dates'
+import { addMonthsClamped, addDays } from '@/lib/billing/dates'
 
 // Billing card on the member profile. v0.1.7-b: card on file plus the payment
 // history and the next renewal date. Anniversary model: N succeeded charges
@@ -9,6 +9,7 @@ import { addMonthsClamped } from '@/lib/billing/dates'
 
 export interface PaymentDisplay {
   id: string
+  kind: 'first_month' | 'renewal'
   amount_cents: number
   status: 'succeeded' | 'failed'
   label: string
@@ -64,6 +65,13 @@ export default function BillingCard({
       : null
 
   const succeededCount = payments.filter((p) => p.status === 'succeeded').length
+  // payments arrive newest-first; a failed renewal at the top of an active
+  // member's history means the 10-day non-payment window is running.
+  const latest = payments[0] || null
+  const renewalFailing = Boolean(
+    memberActive && latest && latest.status === 'failed' && latest.kind === 'renewal'
+  )
+  const pauseDate = renewalFailing && latest ? addDays(latest.created_at, 10) : null
   const nextRenewal =
     memberActive && billingStartDate && succeededCount > 0
       ? addMonthsClamped(billingStartDate, succeededCount)
@@ -118,6 +126,25 @@ export default function BillingCard({
               ? 'The member saves a card from their signing link \u2014 re-send or copy the link from the Membership agreement card above.'
               : 'The member saves a card as part of signing the membership agreement.'}
           </span>
+        </div>
+      )}
+
+      {renewalFailing && pauseDate && latest && (
+        <div
+          style={{
+            background: 'var(--amber-glow)',
+            border: '1px solid var(--amber)',
+            borderRadius: 10,
+            padding: '12px 16px',
+            fontSize: 13,
+            color: 'var(--amber)',
+            fontWeight: 600,
+            marginTop: 14,
+          }}
+        >
+          Renewal payment failed {formatDate(latest.created_at)} \u2014 the membership pauses {formatDate(pauseDate)} if
+          unpaid. The daily run retries the card about every 3 days; the pause itself is applied by Staff
+          from Edit membership.
         </div>
       )}
 

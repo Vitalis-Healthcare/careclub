@@ -134,6 +134,14 @@ export interface Payment {
   created_at: string
 }
 
+export interface RenewalReminder {
+  id: string
+  client_id: string
+  anniversary_date: string
+  reminder_kind: 'week_before' | 'day_before'
+  sent_at: string
+}
+
 export interface StripeEvent {
   id: string
   type: string

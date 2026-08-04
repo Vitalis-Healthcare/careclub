@@ -55,6 +55,8 @@ export interface Cluster {
   zone_id: string
   name: string
   caregiver_id: string | null
+  monthly_salary_cents: number
+  payroll_burden_pct: number
   status: 'active' | 'forming' | 'inactive'
   created_at: string
 }

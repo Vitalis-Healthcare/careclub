@@ -67,6 +67,7 @@ export async function GET(request: Request) {
       .from('clients')
       .select('id, name, email, status, billing_start_date, tier_id, stripe_customer_id, stripe_payment_method_id, card_brand, card_last4')
       .eq('status', 'active')
+      .is('archived_at', null)
       .not('billing_start_date', 'is', null)
       .not('stripe_payment_method_id', 'is', null)
 

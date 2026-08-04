@@ -49,7 +49,7 @@ export async function POST(request: Request) {
       { data: clusters },
       { data: existingShifts },
     ] = await Promise.all([
-      svc.from('clients').select('id, name, cluster_id, status').eq('status', 'active').not('cluster_id', 'is', null),
+      svc.from('clients').select('id, name, cluster_id, status').eq('status', 'active').is('archived_at', null).not('cluster_id', 'is', null),
       svc.from('clusters').select('id, caregiver_id, status'),
       svc.from('shifts').select('client_id, shift_date').gte('shift_date', weekStart).lte('shift_date', weekEnd),
     ])

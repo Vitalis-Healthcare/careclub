@@ -6,11 +6,16 @@
 // so every signed record names the exact text it was signed against.
 //
 // Version 2 (4 Aug 2026): membership terms pulled into a highlighted bullet
-// box; new "Beginning Your Care" section (payment info after signing, nurse
-// assessment call after payment, start of care no earlier than 14 days from
-// signing); member numbers displayed on the document.
+// box; new "Beginning Your Care" section; member numbers on the document.
+//
+// Version 3 (4 Aug 2026, Stripe epic): the Member saves a payment card as
+// part of signing (SetupIntent \u2014 saved, never charged at signing); the nurse
+// assessment no longer waits on a first payment; the first charge fires when
+// the start of care date is confirmed; billing is monthly to the saved card
+// on the anniversary of the billing start date, never prorated; accepted
+// method is card only (ACH removed until the software supports it).
 
-export const AGREEMENT_VERSION = 2
+export const AGREEMENT_VERSION = 3
 
 export const START_OF_CARE_MIN_DAYS = 14
 
@@ -103,9 +108,9 @@ export function agreementSections(snapshot: TermsSnapshot, memberName: string): 
         {
           type: 'bullets',
           items: [
-            'Vitalis sends the Member their payment information.',
-            'Once the first payment is received, a Vitalis nurse calls the Member to schedule the initial in-home assessment.',
-            `Start of care is confirmed after the assessment and will be no earlier than ${START_OF_CARE_MIN_DAYS} days from the date of signing.`,
+            'The Member saves their payment card as part of signing this agreement. The card is held securely and is not charged at signing.',
+            'A Vitalis nurse calls the Member to schedule the initial in-home assessment.',
+            `Start of care is confirmed after the assessment and will be no earlier than ${START_OF_CARE_MIN_DAYS} days from the date of signing. When the start of care date is confirmed, the first month of membership is charged to the saved card.`,
           ],
         },
         {
@@ -132,7 +137,7 @@ export function agreementSections(snapshot: TermsSnapshot, memberName: string): 
       blocks: [
         {
           type: 'p',
-          text: `Membership is billed monthly in advance beginning on the Member\u2019s billing start date. No deposit is required. Accepted payment methods include bank ACH transfer and common debit or credit cards.`,
+          text: `Membership is billed monthly in advance to the Member\u2019s saved payment card, beginning on the confirmed start of care date and on the same day of each month thereafter. No deposit is required, and partial months are never billed or prorated. Common debit and credit cards are accepted.`,
         },
         {
           type: 'p',

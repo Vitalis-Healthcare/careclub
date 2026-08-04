@@ -77,6 +77,12 @@ export interface Client {
   tier_id: string
   billing_start_date: string | null
   status: 'waitlist' | 'active' | 'paused' | 'canceled'
+  stripe_customer_id: string | null
+  stripe_payment_method_id: string | null
+  card_brand: string | null
+  card_last4: string | null
+  card_exp_month: number | null
+  card_exp_year: number | null
   created_at: string
 }
 
@@ -114,4 +120,10 @@ export interface BillingPeriod {
   hours_remaining: number
   free_cancels_remaining: number
   created_at: string
+}
+
+export interface StripeEvent {
+  id: string
+  type: string
+  received_at: string
 }

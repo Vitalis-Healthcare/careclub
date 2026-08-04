@@ -40,6 +40,7 @@ export default async function ClientsPage() {
 
   const role: UserRole = (profile?.role as UserRole) || 'scheduler'
   const isAdmin = role === 'admin'
+  const isStaff = Boolean(user)
 
   const allMembers = (clients || []) as (Client & { tiers: { name: string } | { name: string }[] | null })[]
   const geocodeEnabled = Boolean(process.env.GOOGLE_MAPS_API_KEY)
@@ -101,7 +102,7 @@ export default async function ClientsPage() {
       <PageHead
         eyebrow="The people"
         title="Club members"
-        right={isAdmin
+        right={isStaff
           ? <AddClientButton tierOptions={tierOptions} clusterOptions={clusterOptions} geocodeEnabled={geocodeEnabled} />
           : undefined}
       />
@@ -144,9 +145,9 @@ export default async function ClientsPage() {
             No Club members yet
           </p>
           <p style={{ fontSize: 13.5, color: 'var(--text-dim)', margin: 0 }}>
-            {isAdmin
+            {isStaff
               ? 'Enroll your first member to begin building a cluster\u2019s waitlist.'
-              : 'An administrator will enroll the first member.'}
+              : 'A staff member will enroll the first member.'}
           </p>
         </div>
       ) : (

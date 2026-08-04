@@ -92,7 +92,7 @@ export default async function ClustersPage() {
     const caregiverName = (cg as { name?: string } | null)?.name || null
     const cost = Math.round(cluster.monthly_salary_cents * (1 + cluster.payroll_burden_pct / 100))
     const margin = revenue - cost
-    const capacity = caregiverName ? 160 : 0
+    const capacity = caregiverName ? 120 : 0
     const utilization = capacity > 0 ? Math.round((subscribedHrs / capacity) * 100) : 0
 
     let healthLabel = 'Forming'

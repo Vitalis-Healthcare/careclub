@@ -17,8 +17,8 @@ export async function POST(request: Request) {
     .eq('id', user.id)
     .single()
 
-  if (profile?.role !== 'admin') {
-    return NextResponse.json({ error: 'Only administrators can enroll members.' }, { status: 403 })
+  if (profile?.role !== 'admin' && profile?.role !== 'scheduler') {
+    return NextResponse.json({ error: 'Only Vitalis staff can enroll members.' }, { status: 403 })
   }
 
   let body: unknown

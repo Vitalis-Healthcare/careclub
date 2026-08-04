@@ -21,8 +21,8 @@ export async function POST(request: Request) {
     .eq('id', user.id)
     .single()
 
-  if (profile?.role !== 'admin') {
-    return NextResponse.json({ error: 'Only administrators can geocode addresses.' }, { status: 403 })
+  if (profile?.role !== 'admin' && profile?.role !== 'scheduler') {
+    return NextResponse.json({ error: 'Only Vitalis staff can geocode addresses.' }, { status: 403 })
   }
 
   const apiKey = process.env.GOOGLE_MAPS_API_KEY

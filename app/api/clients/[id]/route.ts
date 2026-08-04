@@ -22,8 +22,8 @@ export async function PATCH(
     .eq('id', user.id)
     .single()
 
-  if (profile?.role !== 'admin') {
-    return NextResponse.json({ error: 'Only administrators can edit memberships.' }, { status: 403 })
+  if (profile?.role !== 'admin' && profile?.role !== 'scheduler') {
+    return NextResponse.json({ error: 'Only Vitalis staff can edit memberships.' }, { status: 403 })
   }
 
   let body: unknown

@@ -1,19 +1,15 @@
 'use client'
 
 import { useState } from 'react'
-import ClusterModal, { type CaregiverOption } from '@/components/clusters/ClusterModal'
-import type { Cluster } from '@/types'
+import CaregiverModal from '@/components/caregivers/CaregiverModal'
+import type { Caregiver } from '@/types'
 
-export default function EditClusterButton({
-  cluster,
-  caregiverOptions,
-  activeMemberCount,
-  hasCaregiver,
+export default function EditCaregiverButton({
+  caregiver,
+  assignedClusterName,
 }: {
-  cluster: Cluster
-  caregiverOptions: CaregiverOption[]
-  activeMemberCount: number
-  hasCaregiver: boolean
+  caregiver: Caregiver
+  assignedClusterName: string | null
 }) {
   const [open, setOpen] = useState(false)
 
@@ -36,13 +32,10 @@ export default function EditClusterButton({
         Edit
       </button>
       {open && (
-        <ClusterModal
+        <CaregiverModal
           mode="edit"
-          cluster={cluster}
-          zoneOptions={[]}
-          caregiverOptions={caregiverOptions}
-          activeMemberCount={activeMemberCount}
-          hasCaregiver={hasCaregiver}
+          caregiver={caregiver}
+          assignedClusterName={assignedClusterName}
           onClose={() => setOpen(false)}
         />
       )}

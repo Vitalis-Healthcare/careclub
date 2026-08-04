@@ -3,7 +3,7 @@
 import { usePathname } from 'next/navigation'
 import Link from 'next/link'
 import {
-  LayoutDashboard, Calendar, MapPin, Network,
+  LayoutDashboard, Calendar, Map, MapPin, Network,
   Users, Heart, Clock, Settings
 } from 'lucide-react'
 import type { UserRole } from '@/types'
@@ -18,6 +18,7 @@ const NAV_ITEMS: {
     { href: '/schedule', label: 'Schedule', icon: Calendar },
   ]},
   { section: 'The territory', items: [
+    { href: '/map', label: 'The map', icon: Map },
     { href: '/zones', label: 'Zones', icon: MapPin },
     { href: '/clusters', label: 'Clusters', icon: Network },
   ]},

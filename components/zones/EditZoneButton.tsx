@@ -7,9 +7,11 @@ import type { Zone } from '@/types'
 export default function EditZoneButton({
   zone,
   activeClusterNames,
+  geocodeEnabled,
 }: {
   zone: Zone
   activeClusterNames: string[]
+  geocodeEnabled: boolean
 }) {
   const [open, setOpen] = useState(false)
 
@@ -36,6 +38,7 @@ export default function EditZoneButton({
           mode="edit"
           zone={zone}
           activeClusterNames={activeClusterNames}
+          geocodeEnabled={geocodeEnabled}
           onClose={() => setOpen(false)}
         />
       )}

@@ -73,7 +73,7 @@ export default async function ZoneDetailPage({
       <PageHead
         eyebrow="The territory"
         title={typedZone.name}
-        right={isAdmin ? <EditZoneButton zone={typedZone} activeClusterNames={activeClusterNames} /> : undefined}
+        right={isAdmin ? <EditZoneButton zone={typedZone} activeClusterNames={activeClusterNames} geocodeEnabled={Boolean(process.env.GOOGLE_MAPS_API_KEY)} /> : undefined}
       />
 
       <div

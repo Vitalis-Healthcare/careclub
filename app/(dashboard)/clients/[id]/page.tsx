@@ -243,15 +243,19 @@ export default async function ClientDetailPage({
           <h2 style={{ fontFamily: 'var(--font-display), serif', fontSize: 21, fontWeight: 600, margin: '0 0 18px' }}>
             Emergency contact
           </h2>
-          {member.emergency_contact_name || member.emergency_contact_phone ? (
+          {member.emergency_contact_name || member.emergency_contact_phone || member.emergency_contact_email ? (
             <>
               <div style={{ marginBottom: 14 }}>
                 <div style={detailRowLabel}>Name</div>
                 <div style={detailRowValue}>{member.emergency_contact_name || '—'}</div>
               </div>
-              <div>
+              <div style={{ marginBottom: 14 }}>
                 <div style={detailRowLabel}>Phone</div>
                 <div style={detailRowValue}>{member.emergency_contact_phone || '—'}</div>
+              </div>
+              <div>
+                <div style={detailRowLabel}>Email</div>
+                <div style={detailRowValue}>{member.emergency_contact_email || '—'}</div>
               </div>
             </>
           ) : (

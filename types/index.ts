@@ -71,6 +71,7 @@ export interface Client {
   email: string | null
   emergency_contact_name: string | null
   emergency_contact_phone: string | null
+  emergency_contact_email: string | null
   cluster_id: string | null
   tier_id: string
   billing_start_date: string | null

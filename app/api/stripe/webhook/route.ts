@@ -77,9 +77,15 @@ export async function POST(request: Request) {
             stripe_payment_intent_id: pi.id,
             amount_cents: pi.amount,
             status: succeeded ? 'succeeded' : 'failed',
-            kind: pi.metadata?.careclub_kind === 'renewal' ? 'renewal' : 'first_month',
+            kind:
+              pi.metadata?.careclub_kind === 'hour_bank'
+                ? 'hour_bank'
+                : pi.metadata?.careclub_kind === 'renewal'
+                  ? 'renewal'
+                  : 'first_month',
             label: pi.metadata?.careclub_label || 'Membership payment',
             failure_message: succeeded ? null : pi.last_payment_error?.message || 'The payment failed.',
+            period_start: pi.metadata?.careclub_period_start || null,
           })
         } else if (succeeded && row.status !== 'succeeded') {
           await svc

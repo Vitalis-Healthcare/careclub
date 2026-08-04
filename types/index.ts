@@ -130,9 +130,10 @@ export interface Payment {
   stripe_payment_intent_id: string | null
   amount_cents: number
   status: 'succeeded' | 'failed'
-  kind: 'first_month' | 'renewal'
+  kind: 'first_month' | 'renewal' | 'hour_bank'
   label: string
   failure_message: string | null
+  period_start: string | null
   created_at: string
 }
 

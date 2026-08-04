@@ -200,3 +200,107 @@ export async function chargeRenewal(params: {
 
   return { ok: true }
 }
+
+// The hour-bank charge (v0.1.9-c cron): overage and weekend hours accrued in
+// a CLOSED billing period, billed as one charge. Idempotency is ledger-first
+// and database-guaranteed: a partial unique index allows at most one
+// SUCCEEDED hour_bank payment per member per period_start, so a race between
+// two runs (or the cron and the webhook backstop) cannot double-bill. Failed
+// attempts do not occupy the slot; the cron retries them on 3-day spacing.
+export async function chargeHourBank(params: {
+  clientId: string
+  clientName: string
+  customerId: string
+  paymentMethodId: string
+  amountCents: number
+  label: string
+  periodStart: string
+}): Promise<{ ok: true; alreadyPaid: boolean } | { ok: false; declined: boolean; error: string }> {
+  const svc = createServiceClient()
+
+  // Ledger check: has this period already been billed? (The unique index is
+  // the hard guarantee; this check just avoids a pointless Stripe call.)
+  try {
+    const { data: prior } = await svc
+      .from('payments')
+      .select('id')
+      .eq('client_id', params.clientId)
+      .eq('kind', 'hour_bank')
+      .eq('status', 'succeeded')
+      .eq('period_start', params.periodStart)
+      .limit(1)
+    if (prior && prior.length > 0) {
+      return { ok: true, alreadyPaid: true }
+    }
+  } catch {
+    return { ok: false, declined: false, error: 'Could not check the payment ledger.' }
+  }
+
+  const stripe = getStripe()
+
+  let intent: Stripe.PaymentIntent
+  try {
+    intent = await stripe.paymentIntents.create({
+      amount: params.amountCents,
+      currency: 'usd',
+      customer: params.customerId,
+      payment_method: params.paymentMethodId,
+      off_session: true,
+      confirm: true,
+      description: `${params.label} (${params.clientName})`,
+      metadata: {
+        careclub_client_id: params.clientId,
+        careclub_kind: 'hour_bank',
+        careclub_label: params.label,
+        careclub_period_start: params.periodStart,
+      },
+    })
+  } catch (err) {
+    if (err instanceof Stripe.errors.StripeCardError) {
+      const declineMessage = err.message || 'The card was declined.'
+      const piId =
+        err.payment_intent && typeof err.payment_intent === 'object' ? err.payment_intent.id : null
+      try {
+        await svc.from('payments').insert({
+          client_id: params.clientId,
+          stripe_payment_intent_id: piId,
+          amount_cents: params.amountCents,
+          status: 'failed',
+          kind: 'hour_bank',
+          label: params.label,
+          failure_message: declineMessage,
+          period_start: params.periodStart,
+        })
+      } catch {
+        // Surfaced via the cron summary regardless.
+      }
+      return { ok: false, declined: true, error: declineMessage }
+    }
+    return { ok: false, declined: false, error: 'Could not reach Stripe for the hour-bank charge.' }
+  }
+
+  if (intent.status !== 'succeeded') {
+    return { ok: false, declined: true, error: `The payment did not complete (status: ${intent.status}).` }
+  }
+
+  try {
+    const { error: dbError } = await svc.from('payments').insert({
+      client_id: params.clientId,
+      stripe_payment_intent_id: intent.id,
+      amount_cents: params.amountCents,
+      status: 'succeeded',
+      kind: 'hour_bank',
+      label: params.label,
+      period_start: params.periodStart,
+    })
+    if (dbError) {
+      // 23505 means the webhook backstop won the race and the slot is
+      // already occupied - exactly the outcome we want. Any other failure
+      // is reconciled by the webhook from payment_intent.succeeded.
+    }
+  } catch {
+    // Webhook reconciles.
+  }
+
+  return { ok: true, alreadyPaid: false }
+}

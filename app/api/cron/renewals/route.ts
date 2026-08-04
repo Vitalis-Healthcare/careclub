@@ -1,9 +1,10 @@
 import { NextResponse } from 'next/server'
 import { createServiceClient } from '@/lib/supabase/service'
 import { stripeConfigured } from '@/lib/stripe/server'
-import { chargeRenewal } from '@/lib/stripe/charges'
+import { chargeRenewal, chargeHourBank } from '@/lib/stripe/charges'
 import { sendRenewalReminderEmail } from '@/lib/email/resend'
 import { addMonthsClamped, daysBetween, todayInEastern } from '@/lib/billing/dates'
+import { ensureAndSyncPeriods } from '@/lib/billing/periods'
 import { formatMoney } from '@/lib/agreements/content'
 
 // Daily renewals cron (v0.1.7-c). Runs early morning ET via Vercel cron.
@@ -17,6 +18,17 @@ import { formatMoney } from '@/lib/agreements/content'
 // Members with zero succeeded payments are skipped and reported: they were
 // activated outside card billing (legacy/manual) and must never be surprise-
 // charged by a cron. Auth: CRON_SECRET bearer, checked in-handler.
+
+function formatPeriodRange(startIso: string, endIso: string): string {
+  const months = ['Jan', 'Feb', 'Mar', 'Apr', 'May', 'Jun', 'Jul', 'Aug', 'Sep', 'Oct', 'Nov', 'Dec']
+  const fmt = (iso: string): string => {
+    const [y, m, d] = iso.split('T')[0].split('-')
+    const idx = parseInt(m, 10) - 1
+    if (!y || idx < 0 || idx > 11 || !d) return iso
+    return `${months[idx]} ${parseInt(d, 10)}`
+  }
+  return `${fmt(startIso)} – ${fmt(endIso)}`
+}
 
 export async function GET(request: Request) {
   const secret = process.env.CRON_SECRET
@@ -43,6 +55,11 @@ export async function GET(request: Request) {
     skipped_legacy_no_payments: [] as string[],
     reminders_sent: [] as string[],
     reminders_skipped_no_email: [] as string[],
+    hour_bank_charged: [] as string[],
+    hour_bank_declined: [] as string[],
+    hour_bank_errors: [] as string[],
+    hour_bank_skipped_recent_attempt: [] as string[],
+    hour_bank_flags: [] as string[],
   }
 
   try {
@@ -55,7 +72,7 @@ export async function GET(request: Request) {
 
     const { data: tiers } = await svc
       .from('tiers')
-      .select('id, name, monthly_price_cents')
+      .select('id, name, monthly_price_cents, hours_per_month, overage_rate_cents, weekend_rate_cents, free_cancels_per_period')
 
     const list = members || []
     const tierById = new Map((tiers || []).map((t) => [t.id, t]))
@@ -66,7 +83,7 @@ export async function GET(request: Request) {
 
       const { data: paid } = await svc
         .from('payments')
-        .select('id, status, created_at')
+        .select('id, status, kind, period_start, created_at')
         .eq('client_id', member.id)
         .order('created_at', { ascending: false })
 
@@ -75,6 +92,70 @@ export async function GET(request: Request) {
       if (succeededCount === 0) {
         summary.skipped_legacy_no_payments.push(member.name)
         continue
+      }
+
+      // The hour-bank pass (v0.1.9-c): bill every CLOSED period with accrued
+      // overage/weekend hours and no succeeded hour_bank payment yet. Runs
+      // before the renewal branching so its continues cannot skip it, and
+      // independently of the renewal outcome by design: a recovered card
+      // still pays a closed period, and a declined accrual charge retries
+      // on 3-day spacing without holding the renewal hostage. The sync call
+      // also keeps period rows fresh server-side every day.
+      const periods = await ensureAndSyncPeriods(svc, {
+        clientId: member.id,
+        billingStart: member.billing_start_date,
+        currentTierHoursIncluded: Number(tier.hours_per_month),
+        freeCancelsPerPeriod: Number(tier.free_cancels_per_period),
+        today,
+      })
+      for (const period of periods) {
+        if (period.current) continue
+        const amountCents = Math.round(
+          period.overageHours * Number(tier.overage_rate_cents) +
+          period.weekendHours * Number(tier.weekend_rate_cents)
+        )
+        if (amountCents <= 0) continue
+        const periodPayments = rows.filter(
+          (p) => p.kind === 'hour_bank' && String(p.period_start || '').split('T')[0] === period.periodStart
+        )
+        if (periodPayments.some((p) => p.status === 'succeeded')) continue
+        const lastTry = periodPayments[0]?.created_at || null
+        if (lastTry && daysBetween(lastTry.split('T')[0], today) < 3) {
+          summary.hour_bank_skipped_recent_attempt.push(`${member.name} (${period.periodStart})`)
+          continue
+        }
+        const unresolvedHours = period.committedHours + period.committedWeekendHours
+        if (unresolvedHours > 0) {
+          summary.hour_bank_flags.push(
+            `${member.name}: ${unresolvedHours} hrs of scheduled visits were never resolved in the closed period starting ${period.periodStart} — hour bank billed without them`
+          )
+        }
+        const pieces: string[] = []
+        if (period.overageHours > 0) {
+          pieces.push(`${period.overageHours} ${period.overageHours === 1 ? 'hr' : 'hrs'} overage`)
+        }
+        if (period.weekendHours > 0) {
+          pieces.push(`${period.weekendHours} ${period.weekendHours === 1 ? 'hr' : 'hrs'} weekend`)
+        }
+        const label = `Hour bank — ${formatPeriodRange(period.periodStart, period.periodEndInclusive)} · ${pieces.join(' + ')}`
+        const result = await chargeHourBank({
+          clientId: member.id,
+          clientName: member.name,
+          customerId: member.stripe_customer_id,
+          paymentMethodId: member.stripe_payment_method_id,
+          amountCents,
+          label,
+          periodStart: period.periodStart,
+        })
+        if (result.ok) {
+          if (!result.alreadyPaid) {
+            summary.hour_bank_charged.push(`${member.name} (${formatMoney(amountCents)}, period ${period.periodStart})`)
+          }
+        } else if (result.declined) {
+          summary.hour_bank_declined.push(`${member.name} (period ${period.periodStart}): ${result.error}`)
+        } else {
+          summary.hour_bank_errors.push(`${member.name} (period ${period.periodStart}): ${result.error}`)
+        }
       }
 
       const anniversary = addMonthsClamped(member.billing_start_date, succeededCount)

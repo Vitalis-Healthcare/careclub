@@ -56,7 +56,7 @@ export default async function ClientDetailPage({
     svc.from('clients').select('id, cluster_id, status'),
     svc.from('standing_patterns').select('day_of_week, start_time').eq('client_id', id),
     svc.from('agreements').select('id, status, token, version, tier_name, sent_at, signed_at, signer_name').eq('client_id', id).neq('status', 'void').order('sent_at', { ascending: false }).limit(1),
-    svc.from('payments').select('id, amount_cents, status, label, failure_message, created_at').eq('client_id', id).order('created_at', { ascending: false }).limit(24),
+    svc.from('payments').select('id, kind, amount_cents, status, label, failure_message, created_at').eq('client_id', id).order('created_at', { ascending: false }).limit(24),
   ])
 
   if (!client) {

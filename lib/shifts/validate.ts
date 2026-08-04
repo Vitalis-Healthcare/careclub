@@ -2,9 +2,13 @@
 //
 // Extension rule (Option B ruling): a visit may extend by one hour, booked as
 // overage, only when the next block in the same cluster on the same day is
-// free — the 30-minute buffer absorbs minutes, empty slots absorb hours.
-// 8:00 extends to 11:00 (needs 10:30 free), 10:30 extends to 13:30 (needs
-// 13:00 free), 13:00 extends to 16:00 (no following block; fits the workday).
+// free — the buffer absorbs minutes, empty slots absorb hours.
+// 8:00 extends to 11:00 (needs 11:00 free — the extension ends exactly at
+// the next block's start), 11:00 extends to 14:00 (same, needs 14:00 free),
+// and 14:00 extends to 17:00: the last block has no following visit, and by
+// Okezie's ruling (4 Aug 2026) paid overage may run one hour past the 16:00
+// caregiver day end, with the aide's consent confirmed by Staff before the
+// extension is recorded.
 
 import type { BlockStart } from '@/lib/patterns/validate'
 
@@ -12,15 +16,15 @@ export const SHIFT_ACTIONS = ['complete', 'no_show', 'cancel', 'extend', 'remove
 export type ShiftAction = (typeof SHIFT_ACTIONS)[number]
 
 export const NEXT_BLOCK: Record<BlockStart, BlockStart | null> = {
-  '08:00': '10:30',
-  '10:30': '13:00',
-  '13:00': null,
+  '08:00': '11:00',
+  '11:00': '14:00',
+  '14:00': null,
 }
 
 export const EXTENDED_END: Record<BlockStart, string> = {
   '08:00': '11:00',
-  '10:30': '13:30',
-  '13:00': '16:00',
+  '11:00': '14:00',
+  '14:00': '17:00',
 }
 
 export interface ShiftActionInput {

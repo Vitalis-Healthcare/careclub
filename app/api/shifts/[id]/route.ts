@@ -100,7 +100,7 @@ export async function PATCH(
 
         if (blocking && blocking.length > 0) {
           return NextResponse.json(
-            { error: `The ${nextBlock === '10:30' ? '10:30 AM' : '1:00 PM'} block is taken, so this visit cannot run long. Book the extra hour as a separate visit instead.` },
+            { error: `The ${nextBlock === '11:00' ? '11:00 AM' : '2:00 PM'} block is taken, so this visit cannot run long. Book the extra hour as a separate visit instead.` },
             { status: 409 }
           )
         }

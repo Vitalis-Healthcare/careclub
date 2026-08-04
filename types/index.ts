@@ -119,6 +119,8 @@ export interface BillingPeriod {
   hours_used: number
   hours_remaining: number
   free_cancels_remaining: number
+  overage_hours: number
+  weekend_hours: number
   created_at: string
 }
 

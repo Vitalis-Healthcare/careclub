@@ -7,6 +7,9 @@ import EditClientButton from '@/components/clients/EditClientButton'
 import PatternsCard from '@/components/patterns/PatternsCard'
 import AgreementCard from '@/components/agreements/AgreementCard'
 import BillingCard from '@/components/billing/BillingCard'
+import HourBankCard from '@/components/billing/HourBankCard'
+import { ensureAndSyncPeriods } from '@/lib/billing/periods'
+import { todayInEastern } from '@/lib/billing/dates'
 import type { PaymentDisplay } from '@/components/billing/BillingCard'
 import type { AgreementSummary } from '@/components/agreements/AgreementCard'
 import { toTierOptions, buildClusterOptions, formatMemberNumber } from '@/lib/clients/options'
@@ -77,6 +80,23 @@ export default async function ClientDetailPage({
   const zoneName = cluster
     ? ((zones || []).find(z => z.id === cluster.zone_id)?.name as string | undefined) || null
     : null
+
+  // The hour bank (v0.1.9): lazily create and sync billing periods from
+  // visits. Runs on every profile view; the engine is idempotent.
+  const hourBankPeriods = member.billing_start_date && tier
+    ? await ensureAndSyncPeriods(svc, {
+        clientId: member.id,
+        billingStart: member.billing_start_date,
+        currentTierHoursIncluded: Number(tier.hours_per_month),
+        freeCancelsPerPeriod: Number(tier.free_cancels_per_period),
+        today: todayInEastern(),
+      })
+    : []
+  const hourBankEmptyMessage = !member.billing_start_date
+    ? 'The hour bank opens when the membership is activated with a confirmed billing start date.'
+    : hourBankPeriods.length === 0
+      ? `The first period opens on ${formatDate(member.billing_start_date)}.`
+      : null
 
   const tierOptions = toTierOptions(allTiers as unknown as TierRow[])
   const clusterOptions = buildClusterOptions(
@@ -321,20 +341,14 @@ export default async function ClientDetailPage({
         />
       </div>
 
-      <div
-        style={{
-          ...card,
-          padding: '28px 26px',
-          textAlign: 'center',
-        }}
-      >
-        <p style={{ fontFamily: 'var(--font-display), serif', fontSize: 19, fontWeight: 600, margin: '0 0 6px' }}>
-          The hour bank
-        </p>
-        <p style={{ fontSize: 13, color: 'var(--text-dim)', margin: 0 }}>
-          Monthly visit tracking and free-cancel counts arrive in v0.1.8.
-        </p>
-      </div>
+      {isStaff && (
+        <HourBankCard
+          periods={hourBankPeriods}
+          overageRateCents={tier ? Number(tier.overage_rate_cents) : 6500}
+          weekendRateCents={tier ? Number(tier.weekend_rate_cents) : 6500}
+          emptyMessage={hourBankEmptyMessage}
+        />
+      )}
     </>
   )
 }

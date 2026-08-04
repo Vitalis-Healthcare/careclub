@@ -77,6 +77,7 @@ export interface Client {
   tier_id: string
   billing_start_date: string | null
   status: 'waitlist' | 'active' | 'paused' | 'canceled'
+  archived_at: string | null
   stripe_customer_id: string | null
   stripe_payment_method_id: string | null
   card_brand: string | null

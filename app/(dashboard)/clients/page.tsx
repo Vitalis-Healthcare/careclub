@@ -16,7 +16,13 @@ const SECTION_ORDER: { status: MemberStatus; heading: string; blurb: string }[] 
   { status: 'canceled', heading: 'Canceled', blurb: 'Kept for the record.' },
 ]
 
-export default async function ClientsPage() {
+export default async function ClientsPage({
+  searchParams,
+}: {
+  searchParams: Promise<{ archived?: string }>
+}) {
+  const { archived } = await searchParams
+  const showArchive = archived === '1'
   const supabase = await createClient()
   const { data: { user } } = await supabase.auth.getUser()
 
@@ -42,7 +48,11 @@ export default async function ClientsPage() {
   const isAdmin = role === 'admin'
   const isStaff = Boolean(user)
 
-  const allMembers = (clients || []) as (Client & { tiers: { name: string } | { name: string }[] | null })[]
+  const everyMember = (clients || []) as (Client & { tiers: { name: string } | { name: string }[] | null })[]
+  // The archive (v0.1.10): archived records leave the working lists and all
+  // counts, reachable behind the toggle. Nothing is ever deleted.
+  const allMembers = everyMember.filter(m => !m.archived_at)
+  const archivedMembers = everyMember.filter(m => Boolean(m.archived_at))
   const geocodeEnabled = Boolean(process.env.GOOGLE_MAPS_API_KEY)
 
   const tierOptions = toTierOptions((tiers || []) as TierRow[])
@@ -130,7 +140,18 @@ export default async function ClientsPage() {
         </div>
       </div>
 
-      {allMembers.length === 0 ? (
+      {archivedMembers.length > 0 && (
+        <div style={{ margin: '-26px 0 30px', textAlign: 'right' }}>
+          <Link
+            href={showArchive ? '/clients' : '/clients?archived=1'}
+            style={{ fontSize: 12.5, fontWeight: 600, color: 'var(--text-faint)', textDecoration: 'none' }}
+          >
+            {showArchive ? '← Back to the working lists' : `Archived (${archivedMembers.length})`}
+          </Link>
+        </div>
+      )}
+
+      {allMembers.length === 0 && !showArchive ? (
         <div
           style={{
             background: 'var(--surface)',
@@ -151,7 +172,7 @@ export default async function ClientsPage() {
           </p>
         </div>
       ) : (
-        SECTION_ORDER.map(({ status, heading, blurb }) => {
+        !showArchive && SECTION_ORDER.map(({ status, heading, blurb }) => {
           const members = byStatus(status)
           if (members.length === 0) return null
           const canceledSection = status === 'canceled'
@@ -245,6 +266,74 @@ export default async function ClientsPage() {
             </div>
           )
         })
+      )}
+
+      {showArchive && (
+        <div style={{ marginBottom: 40 }}>
+          <div style={{ display: 'flex', alignItems: 'baseline', gap: 12, margin: '0 0 6px' }}>
+            <h2 style={{ fontFamily: 'var(--font-display), serif', fontSize: 25, fontWeight: 600, margin: 0, color: 'var(--text-dim)' }}>
+              The archive
+            </h2>
+            <span style={{ fontSize: 13, color: 'var(--text-faint)', fontWeight: 600 }}>{archivedMembers.length}</span>
+          </div>
+          <p style={{ fontSize: 12.5, color: 'var(--text-faint)', margin: '0 0 16px' }}>
+            Records kept in full for the license, out of the working lists. Open a record to restore it.
+          </p>
+          {archivedMembers.length === 0 ? (
+            <p style={{ fontSize: 13.5, color: 'var(--text-dim)' }}>The archive is empty.</p>
+          ) : (
+            <div style={{ display: 'grid', gridTemplateColumns: 'repeat(2, 1fr)', gap: 16 }}>
+              {archivedMembers.map((m) => {
+                const tierName = tierNameOf(m)
+                const clusterName = m.cluster_id ? (clusterNameById.get(m.cluster_id) || '—') : null
+                return (
+                  <Link
+                    key={m.id}
+                    href={`/clients/${m.id}`}
+                    style={{
+                      display: 'block',
+                      background: 'var(--surface)',
+                      border: '1px dashed var(--border)',
+                      borderRadius: 14,
+                      boxShadow: 'var(--shadow)',
+                      padding: '20px 22px 18px',
+                      textDecoration: 'none',
+                      color: 'var(--text)',
+                      opacity: 0.6,
+                    }}
+                  >
+                    <div style={{ display: 'flex', alignItems: 'flex-start', justifyContent: 'space-between', marginBottom: 10 }}>
+                      <div style={{ fontFamily: 'var(--font-display), serif', fontSize: 21, fontWeight: 600 }}>
+                        {m.name}
+                      </div>
+                      <span
+                        style={{
+                          fontSize: 9.5,
+                          fontWeight: 700,
+                          letterSpacing: '0.1em',
+                          textTransform: 'uppercase',
+                          padding: '3px 9px',
+                          borderRadius: 999,
+                          background: 'var(--surface-raised)',
+                          color: 'var(--text-faint)',
+                          whiteSpace: 'nowrap',
+                        }}
+                      >
+                        Archived
+                      </span>
+                    </div>
+                    <div style={{ fontSize: 12.5, color: 'var(--text-faint)', marginBottom: 4 }}>
+                      {tierName}{clusterName ? ` · ${clusterName}` : ''} · was {m.status}
+                    </div>
+                    <div style={{ fontSize: 13, color: 'var(--text-dim)' }}>
+                      {m.address || '—'}
+                    </div>
+                  </Link>
+                )
+              })}
+            </div>
+          )}
+        </div>
       )}
     </>
   )

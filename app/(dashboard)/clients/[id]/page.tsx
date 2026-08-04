@@ -4,6 +4,7 @@ import { createClient } from '@/lib/supabase/server'
 import { createServiceClient } from '@/lib/supabase/service'
 import { PageHead } from '@/components/ui/PageChrome'
 import EditClientButton from '@/components/clients/EditClientButton'
+import ArchiveControls from '@/components/clients/ArchiveControls'
 import PatternsCard from '@/components/patterns/PatternsCard'
 import AgreementCard from '@/components/agreements/AgreementCard'
 import BillingCard from '@/components/billing/BillingCard'
@@ -56,7 +57,7 @@ export default async function ClientDetailPage({
     svc.from('tiers').select('id, name, shifts_per_month, hours_per_shift, hours_per_month, monthly_price_cents, overage_rate_cents, weekend_rate_cents, free_cancels_per_period, display_order, created_at'),
     svc.from('clusters').select('id, name, zone_id, caregiver_id, status'),
     svc.from('zones').select('id, name'),
-    svc.from('clients').select('id, cluster_id, status'),
+    svc.from('clients').select('id, cluster_id, status, archived_at'),
     svc.from('standing_patterns').select('day_of_week, start_time').eq('client_id', id),
     svc.from('agreements').select('id, status, token, version, tier_name, sent_at, signed_at, signer_name').eq('client_id', id).neq('status', 'void').order('sent_at', { ascending: false }).limit(1),
     svc.from('payments').select('id, kind, amount_cents, status, label, failure_message, created_at').eq('client_id', id).order('created_at', { ascending: false }).limit(24),
@@ -102,7 +103,7 @@ export default async function ClientDetailPage({
   const clusterOptions = buildClusterOptions(
     clusterRows,
     (zones || []) as ZoneRow[],
-    (allClients || []) as ClientCountRow[],
+    ((allClients || []) as (ClientCountRow & { archived_at: string | null })[]).filter(c => !c.archived_at),
   )
 
   const formatMoney = (cents: number) =>
@@ -171,6 +172,25 @@ export default async function ClientDetailPage({
           ? <EditClientButton client={member} tierOptions={tierOptions} clusterOptions={clusterOptions} geocodeEnabled={geocodeEnabled} />
           : undefined}
       />
+
+      {member.archived_at && (
+        <div
+          style={{
+            background: 'var(--surface-raised)',
+            border: '1px dashed var(--border)',
+            borderRadius: 14,
+            padding: '18px 26px',
+            marginBottom: 32,
+          }}
+        >
+          <p style={{ fontSize: 13.5, fontWeight: 600, color: 'var(--text-dim)', margin: 0 }}>
+            Archived on {formatDate(member.archived_at)} — out of the working lists. The record is kept in full.
+          </p>
+          {isAdmin && (
+            <ArchiveControls clientId={member.id} memberName={member.name} archived={true} status={member.status} />
+          )}
+        </div>
+      )}
 
       <div
         style={{
@@ -340,6 +360,12 @@ export default async function ClientDetailPage({
           editable={isStaff}
         />
       </div>
+
+      {isAdmin && !member.archived_at && (
+        <div style={{ marginBottom: 32 }}>
+          <ArchiveControls clientId={member.id} memberName={member.name} archived={false} status={member.status} />
+        </div>
+      )}
 
       {isStaff && (
         <HourBankCard

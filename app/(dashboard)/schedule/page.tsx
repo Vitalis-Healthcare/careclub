@@ -264,7 +264,7 @@ export default async function SchedulePage({
       )}
 
       <p style={{ fontSize: 12, color: 'var(--text-faint)', marginTop: 24 }}>
-        Visits run 2 hours inside 2.5-hour blocks — the 30-minute tail covers travel and finishing up. Click a visit to complete, cancel, extend, or mark a no-show.
+        Visits run 2 hours inside 3-hour blocks — the hour between covers finishing up, travel, and slack. Click a visit to complete, cancel, extend, or mark a no-show.
       </p>
     </>
   )

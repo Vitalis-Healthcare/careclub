@@ -171,7 +171,7 @@ export default function Sidebar({ role, displayName }: { role: UserRole; display
               {displayName}
             </div>
             <div style={{ fontSize: 10.5, color: 'var(--text-faint)' }}>
-              {role === 'admin' ? 'Administrator' : 'Scheduler'}
+              {role === 'admin' ? 'Administrator' : 'Staff'}
             </div>
           </div>
         </div>

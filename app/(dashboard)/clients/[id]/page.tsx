@@ -4,6 +4,7 @@ import { createClient } from '@/lib/supabase/server'
 import { createServiceClient } from '@/lib/supabase/service'
 import { PageHead } from '@/components/ui/PageChrome'
 import EditClientButton from '@/components/clients/EditClientButton'
+import PatternsCard from '@/components/patterns/PatternsCard'
 import { toTierOptions, buildClusterOptions } from '@/lib/clients/options'
 import type { TierRow, ClusterRow, ZoneRow, ClientCountRow } from '@/lib/clients/options'
 import type { UserRole, Client, Tier } from '@/types'
@@ -37,6 +38,7 @@ export default async function ClientDetailPage({
     { data: clusters },
     { data: zones },
     { data: allClients },
+    { data: patterns },
   ] = await Promise.all([
     user
       ? svc.from('profiles').select('role').eq('id', user.id).single()
@@ -46,6 +48,7 @@ export default async function ClientDetailPage({
     svc.from('clusters').select('id, name, zone_id, caregiver_id, status'),
     svc.from('zones').select('id, name'),
     svc.from('clients').select('id, cluster_id, status'),
+    svc.from('standing_patterns').select('day_of_week, start_time').eq('client_id', id),
   ])
 
   if (!client) {
@@ -55,6 +58,7 @@ export default async function ClientDetailPage({
   const member = client as Client
   const role: UserRole = (profile?.role as UserRole) || 'scheduler'
   const isAdmin = role === 'admin'
+  const isStaff = Boolean(user)
   const geocodeEnabled = Boolean(process.env.GOOGLE_MAPS_API_KEY)
 
   const allTiers = (tiers || []) as Tier[]
@@ -135,7 +139,7 @@ export default async function ClientDetailPage({
       <PageHead
         eyebrow="The people"
         title={member.name}
-        right={isAdmin
+        right={isStaff
           ? <EditClientButton client={member} tierOptions={tierOptions} clusterOptions={clusterOptions} geocodeEnabled={geocodeEnabled} />
           : undefined}
       />
@@ -260,10 +264,21 @@ export default async function ClientDetailPage({
             </>
           ) : (
             <p style={{ fontSize: 13.5, color: 'var(--text-dim)', margin: 0 }}>
-              No emergency contact on file yet. {isAdmin ? 'Add one from Edit membership.' : ''}
+              No emergency contact on file yet. {isStaff ? 'Add one from Edit membership.' : ''}
             </p>
           )}
         </div>
+      </div>
+
+      <div style={{ marginBottom: 32 }}>
+        <PatternsCard
+          clientId={member.id}
+          initialPatterns={(patterns || []).map(p => ({ day_of_week: p.day_of_week as number, start_time: String(p.start_time) }))}
+          tierName={tier?.name || '\u2014'}
+          shiftsPerMonth={tier?.shifts_per_month || 0}
+          memberStatus={member.status}
+          editable={isStaff}
+        />
       </div>
 
       <div
@@ -274,10 +289,10 @@ export default async function ClientDetailPage({
         }}
       >
         <p style={{ fontFamily: 'var(--font-display), serif', fontSize: 19, fontWeight: 600, margin: '0 0 6px' }}>
-          Standing schedule &amp; hour bank
+          The hour bank
         </p>
         <p style={{ fontSize: 13, color: 'var(--text-dim)', margin: 0 }}>
-          Weekly patterns and the monthly hour bank arrive with scheduling in v0.1.5.
+          Monthly visit tracking and free-cancel counts arrive in v0.1.7.
         </p>
       </div>
     </>

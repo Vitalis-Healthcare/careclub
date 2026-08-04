@@ -35,7 +35,7 @@ export default async function DashboardPage() {
     return sum + (tier?.monthly_price_cents || 0)
   }, 0)
 
-  const totalCapacity = (caregivers?.length || 0) * 160
+  const totalCapacity = (caregivers?.length || 0) * 120
 
   // Build cluster cards
   const clusterCards = (clusters || []).map(cluster => {
@@ -57,7 +57,7 @@ export default async function DashboardPage() {
     const burden = cluster.payroll_burden_pct ?? 25
     const cost = Math.round(salary * (1 + burden / 100))
     const margin = revenue - cost
-    const capacity = cg ? 160 : 0
+    const capacity = cg ? 120 : 0
     const utilization = capacity > 0 ? Math.round((subscribedHrs / capacity) * 100) : 0
 
     let healthLabel = 'Forming'

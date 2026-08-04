@@ -5,6 +5,8 @@ import { createServiceClient } from '@/lib/supabase/service'
 import { PageHead } from '@/components/ui/PageChrome'
 import EditClientButton from '@/components/clients/EditClientButton'
 import PatternsCard from '@/components/patterns/PatternsCard'
+import AgreementCard from '@/components/agreements/AgreementCard'
+import type { AgreementSummary } from '@/components/agreements/AgreementCard'
 import { toTierOptions, buildClusterOptions } from '@/lib/clients/options'
 import type { TierRow, ClusterRow, ZoneRow, ClientCountRow } from '@/lib/clients/options'
 import type { UserRole, Client, Tier } from '@/types'
@@ -39,6 +41,7 @@ export default async function ClientDetailPage({
     { data: zones },
     { data: allClients },
     { data: patterns },
+    { data: agreements },
   ] = await Promise.all([
     user
       ? svc.from('profiles').select('role').eq('id', user.id).single()
@@ -49,6 +52,7 @@ export default async function ClientDetailPage({
     svc.from('zones').select('id, name'),
     svc.from('clients').select('id, cluster_id, status'),
     svc.from('standing_patterns').select('day_of_week, start_time').eq('client_id', id),
+    svc.from('agreements').select('id, status, token, version, tier_name, sent_at, signed_at, signer_name').eq('client_id', id).neq('status', 'void').order('sent_at', { ascending: false }).limit(1),
   ])
 
   if (!client) {
@@ -269,6 +273,16 @@ export default async function ClientDetailPage({
           )}
         </div>
       </div>
+
+      {isStaff && (
+        <div style={{ marginBottom: 32 }}>
+          <AgreementCard
+            clientId={member.id}
+            agreement={((agreements || [])[0] as AgreementSummary | undefined) || null}
+            memberHasEmail={Boolean(member.email)}
+          />
+        </div>
+      )}
 
       <div style={{ marginBottom: 32 }}>
         <PatternsCard

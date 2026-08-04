@@ -6,6 +6,7 @@ import { PageHead } from '@/components/ui/PageChrome'
 import EditClientButton from '@/components/clients/EditClientButton'
 import PatternsCard from '@/components/patterns/PatternsCard'
 import AgreementCard from '@/components/agreements/AgreementCard'
+import BillingCard from '@/components/billing/BillingCard'
 import type { AgreementSummary } from '@/components/agreements/AgreementCard'
 import { toTierOptions, buildClusterOptions, formatMemberNumber } from '@/lib/clients/options'
 import type { TierRow, ClusterRow, ZoneRow, ClientCountRow } from '@/lib/clients/options'
@@ -290,6 +291,19 @@ export default async function ClientDetailPage({
         </div>
       )}
 
+      {isStaff && (
+        <div style={{ marginBottom: 32 }}>
+          <BillingCard
+            cardBrand={member.card_brand}
+            cardLast4={member.card_last4}
+            cardExpMonth={member.card_exp_month}
+            cardExpYear={member.card_exp_year}
+            hasCard={Boolean(member.stripe_payment_method_id)}
+            agreementSigned={((agreements || [])[0]?.status || '') === 'signed'}
+          />
+        </div>
+      )}
+
       <div style={{ marginBottom: 32 }}>
         <PatternsCard
           clientId={member.id}
@@ -312,7 +326,7 @@ export default async function ClientDetailPage({
           The hour bank
         </p>
         <p style={{ fontSize: 13, color: 'var(--text-dim)', margin: 0 }}>
-          Monthly visit tracking and free-cancel counts arrive in v0.1.7.
+          Monthly visit tracking and free-cancel counts arrive in v0.1.8.
         </p>
       </div>
     </>

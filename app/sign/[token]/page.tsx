@@ -2,6 +2,7 @@ import Image from 'next/image'
 import { notFound } from 'next/navigation'
 import { createServiceClient } from '@/lib/supabase/service'
 import SignaturePanel from '@/components/agreements/SignaturePanel'
+import PaymentSetupPanel from '@/components/agreements/PaymentSetupPanel'
 import { agreementSections, DIRECTIVE_OPTIONS, VITALIS_LEGAL, formatMoney, START_OF_CARE_MIN_DAYS } from '@/lib/agreements/content'
 import { formatMemberNumber } from '@/lib/clients/options'
 import type { TermsSnapshot } from '@/lib/agreements/content'
@@ -55,7 +56,7 @@ export default async function SignPage({
   const svc = createServiceClient()
   const { data: agreement } = await svc
     .from('agreements')
-    .select('*, clients(name, address, member_number)')
+    .select('*, clients(name, address, member_number, stripe_payment_method_id, card_brand, card_last4)')
     .eq('token', token)
     .single()
 
@@ -78,6 +79,8 @@ export default async function SignPage({
   const memberName = memberRel?.name || 'the Member'
   const memberAddress = memberRel?.address || ''
   const signed = agreement.status === 'signed'
+  const cardOnFile = Boolean(memberRel?.stripe_payment_method_id)
+  const stripePublishableKey = process.env.NEXT_PUBLIC_STRIPE_PUBLISHABLE_KEY || ''
   const startOfCareEarliest = agreement.signed_at
     ? new Date(new Date(agreement.signed_at).getTime() + START_OF_CARE_MIN_DAYS * 24 * 60 * 60 * 1000).toISOString()
     : null
@@ -138,6 +141,31 @@ export default async function SignPage({
               }}
             >
               Signed by {agreement.signer_name} on {formatDateTime(agreement.signed_at)}. This is the executed record.
+            </div>
+          )}
+
+          {signed && !cardOnFile && stripePublishableKey && (
+            <PaymentSetupPanel token={token} publishableKey={stripePublishableKey} />
+          )}
+
+          {signed && cardOnFile && (
+            <div
+              style={{
+                background: 'var(--surface-raised)',
+                border: '1px solid var(--border-soft)',
+                borderRadius: 10,
+                padding: '12px 18px',
+                fontSize: 13,
+                color: 'var(--text-dim)',
+                marginBottom: 28,
+                textAlign: 'center',
+              }}
+            >
+              Payment card on file
+              {memberRel?.card_brand && memberRel?.card_last4
+                ? ` \u2014 ${String(memberRel.card_brand).toUpperCase()} \u2022\u2022\u2022\u2022 ${memberRel.card_last4}`
+                : ''}
+              . It is charged only once your start of care date is confirmed.
             </div>
           )}
 

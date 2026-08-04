@@ -79,7 +79,7 @@ export default async function ZonesPage() {
       <PageHead
         eyebrow="The territory"
         title="Zones"
-        right={isAdmin ? <AddZoneButton /> : undefined}
+        right={isAdmin ? <AddZoneButton geocodeEnabled={Boolean(process.env.GOOGLE_MAPS_API_KEY)} /> : undefined}
       />
 
       <div style={{ display: 'grid', gridTemplateColumns: 'repeat(3, 1fr)', gap: 14, marginBottom: 40 }}>

@@ -44,11 +44,13 @@ export default function ZoneModal({
   mode,
   zone,
   activeClusterNames,
+  geocodeEnabled,
   onClose,
 }: {
   mode: 'create' | 'edit'
   zone: Zone | null
   activeClusterNames: string[]
+  geocodeEnabled: boolean
   onClose: () => void
 }) {
   const router = useRouter()
@@ -63,6 +65,7 @@ export default function ZoneModal({
   const [notes, setNotes] = useState(zone?.notes || '')
   const [error, setError] = useState('')
   const [saving, setSaving] = useState(false)
+  const [geocoding, setGeocoding] = useState(false)
 
   const deactivating = mode === 'edit' && zone?.status === 'active' && status === 'inactive'
   const showClusterWarning = deactivating && activeClusterNames.length > 0
@@ -93,6 +96,37 @@ export default function ZoneModal({
       return 'Radius must be between 0.5 and 25 miles.'
     }
     return null
+  }
+
+  const handleGeocode = async () => {
+    if (!centerAddress.trim()) {
+      setError('Enter the center address first, then look up its coordinates.')
+      return
+    }
+    setGeocoding(true)
+    setError('')
+    try {
+      const res = await fetch('/api/geocode', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ address: centerAddress.trim() }),
+      })
+      const data = await res.json()
+      if (!res.ok) {
+        setError(data.error || 'The address lookup failed. Enter coordinates manually.')
+        setGeocoding(false)
+        return
+      }
+      setLat(String(data.lat))
+      setLng(String(data.lng))
+      if (typeof data.formatted_address === 'string' && data.formatted_address) {
+        setCenterAddress(data.formatted_address)
+      }
+      setGeocoding(false)
+    } catch {
+      setError('Could not reach the server. Enter coordinates manually.')
+      setGeocoding(false)
+    }
   }
 
   const handleSave = async () => {
@@ -216,8 +250,28 @@ export default function ZoneModal({
           value={centerAddress}
           onChange={(e) => setCenterAddress(e.target.value)}
           placeholder="7315 Wisconsin Ave, Bethesda, MD 20814"
-          style={inputStyle}
+          style={{ ...inputStyle, marginBottom: geocodeEnabled ? 10 : 16 }}
         />
+        {geocodeEnabled && (
+          <button
+            onClick={handleGeocode}
+            disabled={geocoding || saving}
+            style={{
+              padding: '8px 14px',
+              fontSize: 12,
+              fontWeight: 600,
+              fontFamily: 'inherit',
+              background: 'transparent',
+              color: geocoding ? 'var(--text-faint)' : 'var(--green-bright)',
+              border: `1px solid ${geocoding ? 'var(--border)' : 'var(--green-bright)'}`,
+              borderRadius: 8,
+              cursor: geocoding ? 'default' : 'pointer',
+              marginBottom: 16,
+            }}
+          >
+            {geocoding ? 'Looking up…' : 'Find coordinates'}
+          </button>
+        )}
 
         <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 14 }}>
           <div>
@@ -242,7 +296,9 @@ export default function ZoneModal({
           </div>
         </div>
         <div style={{ fontSize: 12, color: 'var(--text-dim)', margin: '-8px 0 16px' }}>
-          In Google Maps, right-click the center point — the coordinates appear at the top of the menu. Click them to copy.
+          {geocodeEnabled
+            ? 'Use the lookup button, or adjust the coordinates manually to fine-tune the center point.'
+            : 'In Google Maps, right-click the center point — the coordinates appear at the top of the menu. Click them to copy.'}
         </div>
 
         {mode === 'edit' && (

@@ -3,7 +3,7 @@
 import { useState } from 'react'
 import ZoneModal from '@/components/zones/ZoneModal'
 
-export default function AddZoneButton() {
+export default function AddZoneButton({ geocodeEnabled }: { geocodeEnabled: boolean }) {
   const [open, setOpen] = useState(false)
 
   return (
@@ -29,6 +29,7 @@ export default function AddZoneButton() {
           mode="create"
           zone={null}
           activeClusterNames={[]}
+          geocodeEnabled={geocodeEnabled}
           onClose={() => setOpen(false)}
         />
       )}

@@ -14,7 +14,7 @@ export default async function DashboardPage() {
     { data: caregivers },
   ] = await Promise.all([
     svc.from('zones').select('*').eq('status', 'active'),
-    svc.from('clusters').select('*, zones(name), caregivers(name, monthly_salary_cents, payroll_burden_pct)'),
+    svc.from('clusters').select('*, zones(name), caregivers(name)'),
     svc.from('clients').select('*, tiers(name, hours_per_month, monthly_price_cents)'),
     svc.from('caregivers').select('*').eq('status', 'active'),
   ])
@@ -53,8 +53,8 @@ export default async function DashboardPage() {
     }, 0)
     const cg = Array.isArray(cluster.caregivers) ? cluster.caregivers[0] : cluster.caregivers
     const zoneName = Array.isArray(cluster.zones) ? cluster.zones[0]?.name : cluster.zones?.name
-    const salary = cg?.monthly_salary_cents || 0
-    const burden = cg?.payroll_burden_pct || 25
+    const salary = cluster.monthly_salary_cents || 0
+    const burden = cluster.payroll_burden_pct ?? 25
     const cost = Math.round(salary * (1 + burden / 100))
     const margin = revenue - cost
     const capacity = cg ? 160 : 0

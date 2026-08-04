@@ -26,9 +26,12 @@ export interface Tier {
 export interface Zone {
   id: string
   name: string
+  abbreviation: string | null
+  center_address: string | null
   center_lat: number
   center_lng: number
   radius_miles: number
+  notes: string | null
   status: 'active' | 'inactive'
   created_at: string
 }

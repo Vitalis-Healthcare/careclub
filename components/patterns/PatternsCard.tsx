@@ -5,8 +5,8 @@ import { useRouter } from 'next/navigation'
 
 const BLOCKS: { start: string; label: string }[] = [
   { start: '08:00', label: '8:00 AM' },
-  { start: '10:30', label: '10:30 AM' },
-  { start: '13:00', label: '1:00 PM' },
+  { start: '11:00', label: '11:00 AM' },
+  { start: '14:00', label: '2:00 PM' },
 ]
 
 const DAYS: { day: number; label: string }[] = [

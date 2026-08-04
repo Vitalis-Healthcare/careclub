@@ -7,6 +7,7 @@ import EditClientButton from '@/components/clients/EditClientButton'
 import PatternsCard from '@/components/patterns/PatternsCard'
 import AgreementCard from '@/components/agreements/AgreementCard'
 import BillingCard from '@/components/billing/BillingCard'
+import type { PaymentDisplay } from '@/components/billing/BillingCard'
 import type { AgreementSummary } from '@/components/agreements/AgreementCard'
 import { toTierOptions, buildClusterOptions, formatMemberNumber } from '@/lib/clients/options'
 import type { TierRow, ClusterRow, ZoneRow, ClientCountRow } from '@/lib/clients/options'
@@ -43,6 +44,7 @@ export default async function ClientDetailPage({
     { data: allClients },
     { data: patterns },
     { data: agreements },
+    { data: payments },
   ] = await Promise.all([
     user
       ? svc.from('profiles').select('role').eq('id', user.id).single()
@@ -54,6 +56,7 @@ export default async function ClientDetailPage({
     svc.from('clients').select('id, cluster_id, status'),
     svc.from('standing_patterns').select('day_of_week, start_time').eq('client_id', id),
     svc.from('agreements').select('id, status, token, version, tier_name, sent_at, signed_at, signer_name').eq('client_id', id).neq('status', 'void').order('sent_at', { ascending: false }).limit(1),
+    svc.from('payments').select('id, amount_cents, status, label, failure_message, created_at').eq('client_id', id).order('created_at', { ascending: false }).limit(24),
   ])
 
   if (!client) {
@@ -300,6 +303,9 @@ export default async function ClientDetailPage({
             cardExpYear={member.card_exp_year}
             hasCard={Boolean(member.stripe_payment_method_id)}
             agreementSigned={((agreements || [])[0]?.status || '') === 'signed'}
+            payments={(payments || []) as PaymentDisplay[]}
+            billingStartDate={member.billing_start_date}
+            memberActive={member.status === 'active'}
           />
         </div>
       )}

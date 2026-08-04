@@ -3,6 +3,7 @@ import { createClient } from '@/lib/supabase/server'
 import { createServiceClient } from '@/lib/supabase/service'
 import { PageHead } from '@/components/ui/PageChrome'
 import BuildWeekButton from '@/components/schedule/BuildWeekButton'
+import ShiftCard from '@/components/schedule/ShiftCard'
 import { parseMonday, currentMonday, addDays, BLOCK_LABELS } from '@/lib/patterns/validate'
 import type { BlockStart } from '@/lib/patterns/validate'
 
@@ -12,7 +13,10 @@ interface ShiftRow {
   cluster_id: string
   shift_date: string
   start_time: string
+  duration_hours: number
   status: string
+  is_overage: boolean
+  cancel_type: string | null
   clients: { name: string } | { name: string }[] | null
 }
 
@@ -48,7 +52,7 @@ export default async function SchedulePage({
     { data: zones },
   ] = await Promise.all([
     svc.from('clusters').select('id, name, zone_id, status, caregivers(name)').order('name'),
-    svc.from('shifts').select('id, client_id, cluster_id, shift_date, start_time, status, clients(name)').gte('shift_date', monday).lte('shift_date', friday).order('start_time'),
+    svc.from('shifts').select('id, client_id, cluster_id, shift_date, start_time, duration_hours, status, is_overage, cancel_type, clients(name)').gte('shift_date', monday).lte('shift_date', friday).order('start_time'),
     svc.from('zones').select('id, name'),
   ])
 
@@ -63,6 +67,7 @@ export default async function SchedulePage({
   const conflictKeys = new Set<string>()
   const slotCounts = new Map<string, number>()
   for (const s of allShifts) {
+    if (s.status === 'canceled') continue
     const key = `${s.cluster_id}|${s.shift_date}|${s.start_time.slice(0, 5)}`
     slotCounts.set(key, (slotCounts.get(key) || 0) + 1)
   }
@@ -124,6 +129,7 @@ export default async function SchedulePage({
           )}
         </div>
         <div style={{ display: 'flex', gap: 8 }}>
+          <Link href={`/schedule/month`} style={navLink}>Month view</Link>
           <Link href={`/schedule?week=${addDays(monday, -7)}`} style={navLink}>← Previous</Link>
           {!isCurrentWeek && <Link href="/schedule" style={navLink}>This week</Link>}
           <Link href={`/schedule?week=${addDays(monday, 7)}`} style={navLink}>Next →</Link>
@@ -225,29 +231,26 @@ export default async function SchedulePage({
                         </div>
                       ) : (
                         dayShifts.map((s) => {
-                          const conflict = conflictKeys.has(`${s.cluster_id}|${s.shift_date}|${s.start_time.slice(0, 5)}`)
+                          const conflict = s.status !== 'canceled' && conflictKeys.has(`${s.cluster_id}|${s.shift_date}|${s.start_time.slice(0, 5)}`)
                           return (
-                            <Link
+                            <ShiftCard
                               key={s.id}
-                              href={`/clients/${s.client_id}`}
-                              style={{
-                                display: 'block',
-                                background: 'var(--surface-raised)',
-                                border: `1px solid ${conflict ? 'var(--amber)' : 'var(--border-soft)'}`,
-                                borderRadius: 8,
-                                padding: '10px 12px',
-                                marginBottom: 8,
-                                textDecoration: 'none',
-                                color: 'var(--text)',
+                              conflict={conflict}
+                              shift={{
+                                id: s.id,
+                                client_id: s.client_id,
+                                memberName: memberNameOf(s),
+                                clusterName: (cluster.name as string) || '',
+                                shift_date: s.shift_date,
+                                start_time: s.start_time,
+                                timeLabel: timeLabel(s.start_time),
+                                dateLabel: formatDayHeading(s.shift_date),
+                                duration_hours: Number(s.duration_hours),
+                                status: s.status,
+                                is_overage: Boolean(s.is_overage),
+                                cancel_type: s.cancel_type,
                               }}
-                            >
-                              <div style={{ fontSize: 12.5, fontWeight: 600, marginBottom: 2 }}>
-                                {memberNameOf(s)}
-                              </div>
-                              <div style={{ fontSize: 11.5, color: conflict ? 'var(--amber)' : 'var(--text-dim)' }}>
-                                {timeLabel(s.start_time)} · 2 hrs
-                              </div>
-                            </Link>
+                            />
                           )
                         })
                       )}
@@ -261,7 +264,7 @@ export default async function SchedulePage({
       )}
 
       <p style={{ fontSize: 12, color: 'var(--text-faint)', marginTop: 24 }}>
-        Visits run 2 hours inside 2.5-hour blocks — the 30-minute tail covers travel and finishing up. Completing, canceling, and the monthly view arrive in v0.1.5-b.
+        Visits run 2 hours inside 2.5-hour blocks — the 30-minute tail covers travel and finishing up. Click a visit to complete, cancel, extend, or mark a no-show.
       </p>
     </>
   )

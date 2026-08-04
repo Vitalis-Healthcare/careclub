@@ -1,9 +1,9 @@
 'use client'
 
 import { useState } from 'react'
-import ClusterModal, { type ZoneOption } from '@/components/clusters/ClusterModal'
+import CaregiverModal from '@/components/caregivers/CaregiverModal'
 
-export default function AddClusterButton({ zoneOptions }: { zoneOptions: ZoneOption[] }) {
+export default function AddCaregiverButton() {
   const [open, setOpen] = useState(false)
 
   return (
@@ -22,16 +22,13 @@ export default function AddClusterButton({ zoneOptions }: { zoneOptions: ZoneOpt
           cursor: 'pointer',
         }}
       >
-        Add cluster
+        Add caregiver
       </button>
       {open && (
-        <ClusterModal
+        <CaregiverModal
           mode="create"
-          cluster={null}
-          zoneOptions={zoneOptions}
-          caregiverOptions={[]}
-          activeMemberCount={0}
-          hasCaregiver={false}
+          caregiver={null}
+          assignedClusterName={null}
           onClose={() => setOpen(false)}
         />
       )}

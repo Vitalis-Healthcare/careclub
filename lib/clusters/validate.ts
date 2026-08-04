@@ -34,7 +34,11 @@ export function parseCreateInput(body: unknown): {
 }
 
 export function parseUpdateInput(body: unknown): {
-  input: { monthly_salary_cents: number; status: 'active' | 'forming' | 'inactive' } | null
+  input: {
+    monthly_salary_cents: number
+    status: 'active' | 'forming' | 'inactive'
+    caregiver_id?: string | null
+  } | null
   error: string | null
 } {
   if (typeof body !== 'object' || body === null) {
@@ -48,6 +52,19 @@ export function parseUpdateInput(body: unknown): {
   const status = b.status
   if (status !== 'active' && status !== 'forming' && status !== 'inactive') {
     return { input: null, error: 'Status must be active, forming, or inactive.' }
+  }
+
+  // caregiver_id is optional: absent means leave unchanged, null means unassign,
+  // a string means assign that caregiver (server verifies availability).
+  if ('caregiver_id' in b) {
+    const cgId = b.caregiver_id
+    if (cgId !== null && typeof cgId !== 'string') {
+      return { input: null, error: 'Invalid caregiver reference.' }
+    }
+    return {
+      input: { monthly_salary_cents: cents, status, caregiver_id: cgId === null ? null : cgId },
+      error: null,
+    }
   }
 
   return { input: { monthly_salary_cents: cents, status }, error: null }

@@ -21,6 +21,7 @@ export default async function ClustersPage() {
     { data: zones },
     { data: clusters },
     { data: clients },
+    { data: caregivers },
   ] = await Promise.all([
     user
       ? svc.from('profiles').select('role').eq('id', user.id).single()
@@ -28,6 +29,7 @@ export default async function ClustersPage() {
     svc.from('zones').select('*').order('created_at'),
     svc.from('clusters').select('*, caregivers(name)').order('name'),
     svc.from('clients').select('id, cluster_id, status, tiers(name, hours_per_month, monthly_price_cents)'),
+    svc.from('caregivers').select('id, name, monthly_salary_cents, status').order('name'),
   ])
 
   const role: UserRole = (profile?.role as UserRole) || 'scheduler'
@@ -48,6 +50,17 @@ export default async function ClustersPage() {
         allClusters.filter(c => c.zone_id === z.id).map(c => c.name as string)
       ),
     }))
+
+  // Caregivers available for assignment: active and not already serving a cluster.
+  const assignedCaregiverIds = new Set(
+    allClusters.map(c => c.caregiver_id).filter(Boolean) as string[]
+  )
+  const unassignedCaregivers = (caregivers || [])
+    .filter(cg => cg.status === 'active' && !assignedCaregiverIds.has(cg.id))
+    .map(cg => ({ id: cg.id as string, name: cg.name as string, monthly_salary_cents: cg.monthly_salary_cents as number }))
+  const caregiverById = new Map(
+    (caregivers || []).map(cg => [cg.id as string, { id: cg.id as string, name: cg.name as string, monthly_salary_cents: cg.monthly_salary_cents as number }])
+  )
 
   const formatMoney = (cents: number) =>
     '$' + (cents / 100).toLocaleString('en-US', { minimumFractionDigits: 0, maximumFractionDigits: 0 })
@@ -233,6 +246,12 @@ export default async function ClustersPage() {
                           <span style={{ marginLeft: 'auto' }}>
                             <EditClusterButton
                               cluster={c.cluster}
+                              caregiverOptions={[
+                                ...(c.cluster.caregiver_id && caregiverById.has(c.cluster.caregiver_id)
+                                  ? [caregiverById.get(c.cluster.caregiver_id)!]
+                                  : []),
+                                ...unassignedCaregivers,
+                              ]}
                               activeMemberCount={c.activeMembers.length}
                               hasCaregiver={Boolean(c.caregiverName)}
                             />

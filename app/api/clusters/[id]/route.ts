@@ -49,12 +49,49 @@ export async function PATCH(
       return NextResponse.json({ error: 'Cluster not found.' }, { status: 404 })
     }
 
+    const update: {
+      monthly_salary_cents: number
+      status: 'active' | 'forming' | 'inactive'
+      caregiver_id?: string | null
+    } = {
+      monthly_salary_cents: input.monthly_salary_cents,
+      status: input.status,
+    }
+
+    if ('caregiver_id' in input) {
+      if (input.caregiver_id) {
+        const { data: caregiver } = await svc
+          .from('caregivers')
+          .select('id, status')
+          .eq('id', input.caregiver_id)
+          .single()
+
+        if (!caregiver) {
+          return NextResponse.json({ error: 'Caregiver not found.' }, { status: 404 })
+        }
+        if (caregiver.status !== 'active') {
+          return NextResponse.json({ error: 'Only active caregivers can be assigned to a cluster.' }, { status: 400 })
+        }
+
+        const { data: taken } = await svc
+          .from('clusters')
+          .select('id, name')
+          .eq('caregiver_id', input.caregiver_id)
+          .neq('id', id)
+
+        if (taken && taken.length > 0) {
+          return NextResponse.json(
+            { error: `That caregiver is already assigned to ${taken[0].name}. Each caregiver serves one cluster.` },
+            { status: 409 }
+          )
+        }
+      }
+      update.caregiver_id = input.caregiver_id ?? null
+    }
+
     const { data, error: dbError } = await svc
       .from('clusters')
-      .update({
-        monthly_salary_cents: input.monthly_salary_cents,
-        status: input.status,
-      })
+      .update(update)
       .eq('id', id)
       .select()
       .single()

@@ -2,7 +2,17 @@
 
 import { useState } from 'react'
 import { useRouter } from 'next/navigation'
-import type { Cluster } from '@/types'
+import type { Caregiver } from '@/types'
+
+const DAY_CHIPS: { code: string; label: string }[] = [
+  { code: 'mon', label: 'Mon' },
+  { code: 'tue', label: 'Tue' },
+  { code: 'wed', label: 'Wed' },
+  { code: 'thu', label: 'Thu' },
+  { code: 'fri', label: 'Fri' },
+  { code: 'sat', label: 'Sat' },
+  { code: 'sun', label: 'Sun' },
+]
 
 const labelStyle = {
   display: 'block',
@@ -28,61 +38,59 @@ const inputStyle = {
   marginBottom: 16,
 }
 
-export interface ZoneOption {
-  id: string
-  name: string
-  abbreviation: string
-  nextClusterName: string
+function toTimeInput(value: string | undefined): string {
+  if (!value) return ''
+  return value.slice(0, 5)
 }
 
-export interface CaregiverOption {
-  id: string
-  name: string
-  monthly_salary_cents: number
-}
-
-export default function ClusterModal({
+export default function CaregiverModal({
   mode,
-  cluster,
-  zoneOptions,
-  caregiverOptions,
-  activeMemberCount,
-  hasCaregiver,
+  caregiver,
+  assignedClusterName,
   onClose,
 }: {
   mode: 'create' | 'edit'
-  cluster: Cluster | null
-  zoneOptions: ZoneOption[]
-  caregiverOptions: CaregiverOption[]
-  activeMemberCount: number
-  hasCaregiver: boolean
+  caregiver: Caregiver | null
+  assignedClusterName: string | null
   onClose: () => void
 }) {
   const router = useRouter()
-  const [zoneId, setZoneId] = useState(zoneOptions.length === 1 ? zoneOptions[0].id : '')
+  const [name, setName] = useState(caregiver?.name || '')
+  const [phone, setPhone] = useState(caregiver?.phone || '')
+  const [email, setEmail] = useState(caregiver?.email || '')
   const [salaryDollars, setSalaryDollars] = useState(
-    cluster ? String(cluster.monthly_salary_cents / 100) : '3750'
+    caregiver ? String(caregiver.monthly_salary_cents / 100) : '3750'
   )
-  const [status, setStatus] = useState<'active' | 'forming' | 'inactive'>(cluster?.status || 'forming')
-  const [caregiverId, setCaregiverId] = useState<string>(cluster?.caregiver_id || '')
+  const [workDays, setWorkDays] = useState<string[]>(
+    caregiver?.work_days?.length ? caregiver.work_days : ['mon', 'tue', 'wed', 'thu', 'fri']
+  )
+  const [shiftStart, setShiftStart] = useState(toTimeInput(caregiver?.shift_start) || '08:00')
+  const [shiftEnd, setShiftEnd] = useState(toTimeInput(caregiver?.shift_end) || '16:00')
+  const [status, setStatus] = useState<'active' | 'inactive'>(caregiver?.status || 'active')
   const [error, setError] = useState('')
   const [saving, setSaving] = useState(false)
 
-  const selectedZone = zoneOptions.find(z => z.id === zoneId) || null
-
   const salaryNum = parseFloat(salaryDollars)
   const salaryValid = Number.isFinite(salaryNum) && salaryNum >= 1000 && salaryNum <= 20000
-  const loadedCost = salaryValid ? salaryNum * 1.25 : null
-  const premierToBreakeven = loadedCost !== null ? Math.ceil(loadedCost / 1200) : null
 
-  const activatingWithoutCaregiver =
-    mode === 'edit' && status === 'active' && cluster?.status !== 'active' && !caregiverId && !hasCaregiver
-  const deactivatingWithMembers =
-    mode === 'edit' && status === 'inactive' && cluster?.status !== 'inactive' && activeMemberCount > 0
+  const deactivatingWhileAssigned =
+    mode === 'edit' && status === 'inactive' && caregiver?.status !== 'inactive' && Boolean(assignedClusterName)
+
+  const toggleDay = (code: string) => {
+    setWorkDays(prev =>
+      prev.includes(code) ? prev.filter(d => d !== code) : [...prev, code]
+    )
+  }
 
   const validate = (): string | null => {
-    if (mode === 'create' && !zoneId) return 'Pick a zone for the cluster.'
+    if (!name.trim()) return 'Caregiver name is required.'
+    if (email.trim() && !/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(email.trim())) {
+      return 'That email address does not look valid.'
+    }
     if (!salaryValid) return 'Monthly salary must be between $1,000 and $20,000.'
+    if (workDays.length === 0) return 'Pick at least one work day.'
+    if (!shiftStart || !shiftEnd) return 'Set the shift start and end times.'
+    if (shiftStart >= shiftEnd) return 'Shift start must be before shift end.'
     return null
   }
 
@@ -95,14 +103,20 @@ export default function ClusterModal({
     setSaving(true)
     setError('')
 
-    const cents = Math.round(salaryNum * 100)
+    const payload = {
+      name: name.trim(),
+      phone: phone.trim() || null,
+      email: email.trim() || null,
+      monthly_salary_cents: Math.round(salaryNum * 100),
+      work_days: DAY_CHIPS.map(d => d.code).filter(c => workDays.includes(c)),
+      shift_start: shiftStart,
+      shift_end: shiftEnd,
+      status,
+    }
 
     try {
-      const url = mode === 'create' ? '/api/clusters' : `/api/clusters/${cluster?.id}`
+      const url = mode === 'create' ? '/api/caregivers' : `/api/caregivers/${caregiver?.id}`
       const method = mode === 'create' ? 'POST' : 'PATCH'
-      const payload = mode === 'create'
-        ? { zone_id: zoneId, monthly_salary_cents: cents }
-        : { monthly_salary_cents: cents, status, caregiver_id: caregiverId || null }
       const res = await fetch(url, {
         method,
         headers: { 'Content-Type': 'application/json' },
@@ -122,9 +136,6 @@ export default function ClusterModal({
     }
   }
 
-  const formatMoney = (n: number) =>
-    '$' + n.toLocaleString('en-US', { minimumFractionDigits: 0, maximumFractionDigits: 2 })
-
   return (
     <div
       style={{
@@ -143,7 +154,7 @@ export default function ClusterModal({
     >
       <div
         style={{
-          width: 460,
+          width: 480,
           maxWidth: '100%',
           maxHeight: '90vh',
           overflowY: 'auto',
@@ -162,62 +173,24 @@ export default function ClusterModal({
             margin: '0 0 24px',
           }}
         >
-          {mode === 'create' ? 'Open a cluster' : `Edit ${cluster?.name || 'cluster'}`}
+          {mode === 'create' ? 'Add a caregiver' : `Edit ${caregiver?.name || 'caregiver'}`}
         </h2>
 
-        {mode === 'create' ? (
-          <>
-            <label style={labelStyle}>Zone</label>
-            <select
-              value={zoneId}
-              onChange={(e) => setZoneId(e.target.value)}
-              style={{ ...inputStyle, appearance: 'none' as const }}
-            >
-              <option value="" disabled>Choose a zone</option>
-              {zoneOptions.map((z) => (
-                <option key={z.id} value={z.id}>{z.name} ({z.abbreviation})</option>
-              ))}
-            </select>
-            <div style={{ fontSize: 12, color: 'var(--text-dim)', margin: '-8px 0 16px' }}>
-              {selectedZone
-                ? <>The cluster will be named <b style={{ color: 'var(--text)' }}>{selectedZone.nextClusterName}</b> and start as forming while its waitlist builds.</>
-                : 'The name is assigned automatically from the zone abbreviation (SSC-1, SSC-2, ...).'}
-            </div>
-          </>
-        ) : (
-          <>
-            <label style={labelStyle}>Cluster name</label>
-            <input
-              value={cluster?.name || ''}
-              disabled
-              style={{ ...inputStyle, color: 'var(--text-dim)', cursor: 'not-allowed' }}
-            />
+        <label style={labelStyle}>Full name</label>
+        <input value={name} onChange={(e) => setName(e.target.value)} placeholder="Angela Mensah" style={inputStyle} />
 
-            <label style={labelStyle}>Caregiver</label>
-            <select
-              value={caregiverId}
-              onChange={(e) => {
-                const nextId = e.target.value
-                setCaregiverId(nextId)
-                const picked = caregiverOptions.find(o => o.id === nextId)
-                if (picked) {
-                  setSalaryDollars(String(picked.monthly_salary_cents / 100))
-                }
-              }}
-              style={{ ...inputStyle, appearance: 'none' as const }}
-            >
-              <option value="">No caregiver</option>
-              {caregiverOptions.map((o) => (
-                <option key={o.id} value={o.id}>{o.name}</option>
-              ))}
-            </select>
-            <div style={{ fontSize: 12, color: 'var(--text-dim)', margin: '-8px 0 16px' }}>
-              Only unassigned active caregivers are listed — each caregiver serves one cluster. Picking one pre-fills the salary below; the cluster keeps its own number, so adjust it freely before saving.
-            </div>
-          </>
-        )}
+        <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 14 }}>
+          <div>
+            <label style={labelStyle}>Phone</label>
+            <input value={phone} onChange={(e) => setPhone(e.target.value)} placeholder="(240) 555-0100" style={inputStyle} />
+          </div>
+          <div>
+            <label style={labelStyle}>Email</label>
+            <input value={email} onChange={(e) => setEmail(e.target.value)} placeholder="angela@example.com" style={inputStyle} />
+          </div>
+        </div>
 
-        <label style={labelStyle}>Monthly caregiver salary (USD)</label>
+        <label style={labelStyle}>Monthly salary (USD)</label>
         <input
           value={salaryDollars}
           onChange={(e) => setSalaryDollars(e.target.value)}
@@ -225,17 +198,50 @@ export default function ClusterModal({
           inputMode="decimal"
           style={inputStyle}
         />
-        {loadedCost !== null && (
-          <div style={{ fontSize: 12, color: 'var(--text-dim)', margin: '-8px 0 16px' }}>
-            Loaded cost {formatMoney(loadedCost)}/mo at 25% burden · breakeven at {premierToBreakeven} Premier {premierToBreakeven === 1 ? 'subscriber' : 'subscribers'}
+
+        <label style={labelStyle}>Work days</label>
+        <div style={{ display: 'flex', gap: 6, marginBottom: 16, flexWrap: 'wrap' }}>
+          {DAY_CHIPS.map((d) => {
+            const on = workDays.includes(d.code)
+            return (
+              <button
+                key={d.code}
+                onClick={() => toggleDay(d.code)}
+                style={{
+                  padding: '8px 0',
+                  width: 52,
+                  fontSize: 12,
+                  fontWeight: 600,
+                  fontFamily: 'inherit',
+                  background: on ? 'var(--green-glow)' : 'transparent',
+                  color: on ? 'var(--green-bright)' : 'var(--text-faint)',
+                  border: `1px solid ${on ? 'var(--green-bright)' : 'var(--border)'}`,
+                  borderRadius: 8,
+                  cursor: 'pointer',
+                }}
+              >
+                {d.label}
+              </button>
+            )
+          })}
+        </div>
+
+        <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 14 }}>
+          <div>
+            <label style={labelStyle}>Shift start</label>
+            <input type="time" value={shiftStart} onChange={(e) => setShiftStart(e.target.value)} style={inputStyle} />
           </div>
-        )}
+          <div>
+            <label style={labelStyle}>Shift end</label>
+            <input type="time" value={shiftEnd} onChange={(e) => setShiftEnd(e.target.value)} style={inputStyle} />
+          </div>
+        </div>
 
         {mode === 'edit' && (
           <>
             <label style={labelStyle}>Status</label>
             <div style={{ display: 'flex', gap: 10, marginBottom: 16 }}>
-              {(['forming', 'active', 'inactive'] as const).map((s) => (
+              {(['active', 'inactive'] as const).map((s) => (
                 <button
                   key={s}
                   onClick={() => setStatus(s)}
@@ -257,24 +263,7 @@ export default function ClusterModal({
                 </button>
               ))}
             </div>
-
-            {activatingWithoutCaregiver && (
-              <div
-                style={{
-                  background: 'var(--champagne-glow)',
-                  border: '1px solid var(--champagne)',
-                  borderRadius: 8,
-                  padding: '12px 14px',
-                  fontSize: 13,
-                  color: 'var(--champagne)',
-                  marginBottom: 16,
-                }}
-              >
-                No caregiver is assigned yet, so this cluster will keep displaying as forming until one is assigned (caregiver management arrives in v0.1.3). Activating now is fine — it marks the cluster as ready.
-              </div>
-            )}
-
-            {deactivatingWithMembers && (
+            {deactivatingWhileAssigned && (
               <div
                 style={{
                   background: 'var(--amber-glow)',
@@ -286,7 +275,7 @@ export default function ClusterModal({
                   marginBottom: 16,
                 }}
               >
-                This cluster has {activeMemberCount} active {activeMemberCount === 1 ? 'member' : 'members'}. Deactivating it does not pause their memberships — move them to another cluster first.
+                {caregiver?.name} is assigned to {assignedClusterName}. Deactivating does not unassign them — the cluster will display as forming until a replacement is assigned. To swap caregivers, edit the cluster instead.
               </div>
             )}
           </>
@@ -331,7 +320,7 @@ export default function ClusterModal({
               cursor: saving ? 'default' : 'pointer',
             }}
           >
-            {saving ? 'Saving...' : mode === 'create' ? 'Open cluster' : 'Save changes'}
+            {saving ? 'Saving...' : mode === 'create' ? 'Add caregiver' : 'Save changes'}
           </button>
         </div>
       </div>

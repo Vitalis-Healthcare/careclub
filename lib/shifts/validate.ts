@@ -51,10 +51,25 @@ export function parseShiftAction(body: unknown): { input: ShiftActionInput | nul
   return { input: { action: action as ShiftAction, cancel_type: cancelType }, error: null }
 }
 
-// True when the visit starts less than 48 hours from now (used for the
-// warn-not-block cancellation notice; the count itself arrives in v0.1.7).
+// True when the visit starts less than 48 hours from now. 48-hour notice is
+// a Maryland promise, so both sides of the comparison are Eastern wall
+// clocks (v0.1.9-b; the old form compared against a UTC-constructed time
+// and misjudged by several hours near the boundary).
 export function isShortNotice(shiftDate: string, startTime: string): boolean {
-  const start = new Date(`${shiftDate}T${startTime.slice(0, 5)}:00Z`)
-  if (Number.isNaN(start.getTime())) return false
-  return start.getTime() - Date.now() < 48 * 60 * 60 * 1000
+  const nowEastern = new Date().toLocaleString('en-CA', {
+    timeZone: 'America/New_York',
+    hour12: false,
+  })
+  const [nowDate, nowTime] = nowEastern.split(', ')
+  if (!nowDate || !nowTime) return false
+  const wallClockMs = (d: string, t: string): number => {
+    const [y, m, day] = d.split('-').map((n: string) => parseInt(n, 10))
+    const [h, min] = t.split(':').map((n: string) => parseInt(n, 10))
+    if (!y || !m || !day || Number.isNaN(h) || Number.isNaN(min)) return NaN
+    return Date.UTC(y, m - 1, day, h, min)
+  }
+  const visit = wallClockMs(shiftDate.split('T')[0], startTime.slice(0, 5))
+  const now = wallClockMs(nowDate, nowTime)
+  if (Number.isNaN(visit) || Number.isNaN(now)) return false
+  return visit - now < 48 * 60 * 60 * 1000
 }

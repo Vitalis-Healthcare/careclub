@@ -8,11 +8,13 @@ export default function BuildWeekButton({ weekStart }: { weekStart: string }) {
   const [busy, setBusy] = useState(false)
   const [result, setResult] = useState('')
   const [error, setError] = useState('')
+  const [overageNotes, setOverageNotes] = useState<string[]>([])
 
   const handleBuild = async () => {
     setBusy(true)
     setResult('')
     setError('')
+    setOverageNotes([])
     try {
       const res = await fetch('/api/schedule/generate', {
         method: 'POST',
@@ -34,6 +36,7 @@ export default function BuildWeekButton({ weekStart }: { weekStart: string }) {
         const skipped = data.skipped > 0 ? ` · ${data.skipped} already in place` : ''
         setResult(created + skipped)
       }
+      setOverageNotes(Array.isArray(data.overage_notes) ? data.overage_notes : [])
       setBusy(false)
       router.refresh()
     } catch {
@@ -43,6 +46,7 @@ export default function BuildWeekButton({ weekStart }: { weekStart: string }) {
   }
 
   return (
+    <div style={{ display: 'flex', flexDirection: 'column', alignItems: 'flex-end', gap: 6 }}>
     <div style={{ display: 'flex', alignItems: 'center', gap: 12 }}>
       {result && <span style={{ fontSize: 12.5, color: 'var(--text-dim)' }}>{result}</span>}
       {error && <span style={{ fontSize: 12.5, color: 'var(--red)' }}>{error}</span>}
@@ -63,6 +67,12 @@ export default function BuildWeekButton({ weekStart }: { weekStart: string }) {
       >
         {busy ? 'Building…' : 'Build the week'}
       </button>
+    </div>
+    {overageNotes.map((note) => (
+      <div key={note} style={{ fontSize: 12, color: 'var(--amber)', maxWidth: 520, textAlign: 'right' }}>
+        {note}
+      </div>
+    ))}
     </div>
   )
 }

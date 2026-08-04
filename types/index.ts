@@ -63,6 +63,7 @@ export interface Cluster {
 
 export interface Client {
   id: string
+  member_number: number | null
   name: string
   address: string | null
   lat: number | null

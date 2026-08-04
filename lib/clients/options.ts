@@ -5,6 +5,13 @@
 
 import type { TierOption, ClusterPlacementOption } from '@/components/clients/ClientModal'
 
+// Member numbers are assigned by the client_member_number_seq sequence at
+// enrollment and displayed as VCC-0001 style everywhere.
+export function formatMemberNumber(n: number | null | undefined): string {
+  if (!n) return '\u2014'
+  return 'VCC-' + String(n).padStart(4, '0')
+}
+
 export interface TierRow {
   id: string
   name: string

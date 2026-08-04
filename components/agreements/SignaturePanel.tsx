@@ -148,7 +148,7 @@ export default function SignaturePanel({
           textAlign: 'center',
         }}
       >
-        Thank you, {signerName.trim()}. Your membership agreement is signed — welcome to the Care Club.
+        Thank you, {signerName.trim()}. Your membership agreement is signed — welcome to the Care Club. Watch for your payment information by email; once payment is received, a Vitalis nurse will call to schedule your initial assessment.
       </div>
     )
   }

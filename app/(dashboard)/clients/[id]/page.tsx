@@ -7,7 +7,7 @@ import EditClientButton from '@/components/clients/EditClientButton'
 import PatternsCard from '@/components/patterns/PatternsCard'
 import AgreementCard from '@/components/agreements/AgreementCard'
 import type { AgreementSummary } from '@/components/agreements/AgreementCard'
-import { toTierOptions, buildClusterOptions } from '@/lib/clients/options'
+import { toTierOptions, buildClusterOptions, formatMemberNumber } from '@/lib/clients/options'
 import type { TierRow, ClusterRow, ZoneRow, ClientCountRow } from '@/lib/clients/options'
 import type { UserRole, Client, Tier } from '@/types'
 
@@ -162,6 +162,12 @@ export default async function ClientDetailPage({
           alignItems: 'center',
         }}
       >
+        <div>
+          <div style={factLabel}>Member No.</div>
+          <div style={{ ...factValue, color: 'var(--champagne)', fontVariantNumeric: 'tabular-nums' }}>
+            {formatMemberNumber(member.member_number)}
+          </div>
+        </div>
         <div>
           <div style={factLabel}>Tier</div>
           <div style={{ ...factValue, color: signature ? 'var(--champagne)' : 'var(--text)' }}>

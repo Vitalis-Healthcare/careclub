@@ -2,7 +2,8 @@ import Image from 'next/image'
 import { notFound } from 'next/navigation'
 import { createServiceClient } from '@/lib/supabase/service'
 import SignaturePanel from '@/components/agreements/SignaturePanel'
-import { agreementSections, DIRECTIVE_OPTIONS, VITALIS_LEGAL, formatMoney } from '@/lib/agreements/content'
+import { agreementSections, DIRECTIVE_OPTIONS, VITALIS_LEGAL, formatMoney, START_OF_CARE_MIN_DAYS } from '@/lib/agreements/content'
+import { formatMemberNumber } from '@/lib/clients/options'
 import type { TermsSnapshot } from '@/lib/agreements/content'
 
 // Public signing page. Deliberately pinned to the LIGHT palette regardless of
@@ -54,7 +55,7 @@ export default async function SignPage({
   const svc = createServiceClient()
   const { data: agreement } = await svc
     .from('agreements')
-    .select('*, clients(name, address)')
+    .select('*, clients(name, address, member_number)')
     .eq('token', token)
     .single()
 
@@ -77,6 +78,9 @@ export default async function SignPage({
   const memberName = memberRel?.name || 'the Member'
   const memberAddress = memberRel?.address || ''
   const signed = agreement.status === 'signed'
+  const startOfCareEarliest = agreement.signed_at
+    ? new Date(new Date(agreement.signed_at).getTime() + START_OF_CARE_MIN_DAYS * 24 * 60 * 60 * 1000).toISOString()
+    : null
 
   const snapshot: TermsSnapshot = {
     tier_name: agreement.tier_name,
@@ -152,6 +156,7 @@ export default async function SignPage({
             <div>
               <div style={{ fontSize: 10, letterSpacing: '0.12em', textTransform: 'uppercase', color: 'var(--text-faint)', fontWeight: 600, marginBottom: 3 }}>Member</div>
               <div style={{ fontSize: 14.5, fontWeight: 600 }}>{memberName}</div>
+              <div style={{ fontSize: 12.5, color: 'var(--champagne)', fontWeight: 600 }}>Member No. {formatMemberNumber(memberRel?.member_number)}</div>
               {memberAddress && <div style={{ fontSize: 12.5, color: 'var(--text-dim)' }}>{memberAddress}</div>}
             </div>
             <div>
@@ -168,6 +173,13 @@ export default async function SignPage({
               <div style={{ fontSize: 14.5, fontWeight: 600 }}>Version {agreement.version}</div>
               <div style={{ fontSize: 12.5, color: 'var(--text-dim)' }}>Sent {formatDateTime(agreement.sent_at)}</div>
             </div>
+            <div>
+              <div style={{ fontSize: 10, letterSpacing: '0.12em', textTransform: 'uppercase', color: 'var(--text-faint)', fontWeight: 600, marginBottom: 3 }}>Start of care</div>
+              <div style={{ fontSize: 14.5, fontWeight: 600 }}>
+                {signed ? `No earlier than ${formatDateTime(startOfCareEarliest)}` : `At least ${START_OF_CARE_MIN_DAYS} days after signing`}
+              </div>
+              <div style={{ fontSize: 12.5, color: 'var(--text-dim)' }}>Confirmed after payment and nurse assessment</div>
+            </div>
           </div>
 
           {sections.map((section) => (
@@ -175,11 +187,31 @@ export default async function SignPage({
               <h2 style={{ fontFamily: 'var(--font-display), Georgia, serif', fontSize: 19, fontWeight: 600, margin: '0 0 10px' }}>
                 {section.heading}
               </h2>
-              {section.paragraphs.map((p, i) => (
-                <p key={i} style={{ fontSize: 14, lineHeight: 1.75, color: 'var(--text)', margin: '0 0 10px' }}>
-                  {p}
-                </p>
-              ))}
+              {section.blocks.map((block, i) =>
+                block.type === 'p' ? (
+                  <p key={i} style={{ fontSize: 14, lineHeight: 1.75, color: 'var(--text)', margin: '0 0 10px' }}>
+                    {block.text}
+                  </p>
+                ) : (
+                  <div
+                    key={i}
+                    style={{
+                      background: 'var(--green-glow)',
+                      border: '1px solid var(--green-bright)',
+                      borderRadius: 10,
+                      padding: '16px 20px',
+                      margin: '0 0 12px',
+                    }}
+                  >
+                    {block.items.map((item, j) => (
+                      <div key={j} style={{ display: 'flex', gap: 10, fontSize: 14, lineHeight: 1.7, color: 'var(--text)', fontWeight: 600, marginBottom: j < block.items.length - 1 ? 6 : 0 }}>
+                        <span style={{ color: 'var(--green-bright)' }}>●</span>
+                        <span>{item}</span>
+                      </div>
+                    ))}
+                  </div>
+                )
+              )}
               {section.heading === 'Advance Directives' && signed && (
                 <div style={{ marginTop: 4 }}>
                   {DIRECTIVE_OPTIONS.map((o) => (

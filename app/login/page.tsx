@@ -31,66 +31,144 @@ export default function LoginPage() {
   }
 
   const inputStyle = {
-    width: '100%', padding: '10px 12px', fontSize: 14, border: '1px solid #ddd',
-    borderRadius: 8, outline: 'none', boxSizing: 'border-box' as const, marginBottom: 16,
+    width: '100%',
+    padding: '11px 13px',
+    fontSize: 14,
+    fontFamily: 'inherit',
+    background: 'var(--surface-raised)',
+    color: 'var(--text)',
+    border: '1px solid var(--border)',
+    borderRadius: 8,
+    outline: 'none',
+    boxSizing: 'border-box' as const,
+    marginBottom: 16,
+  }
+
+  const labelStyle = {
+    display: 'block',
+    fontSize: 11,
+    letterSpacing: '0.14em',
+    textTransform: 'uppercase' as const,
+    fontWeight: 600,
+    color: 'var(--text-faint)',
+    marginBottom: 7,
+  }
+
+  const primaryEnabled = mode === 'password' ? Boolean(email && password && !loading) : Boolean(email && !loading)
+
+  const primaryButtonStyle = {
+    width: '100%',
+    padding: '11px 0',
+    fontSize: 14,
+    fontWeight: 600,
+    fontFamily: 'inherit',
+    background: primaryEnabled ? 'var(--green-bright)' : 'var(--surface-raised)',
+    color: primaryEnabled ? 'var(--on-accent)' : 'var(--text-faint)',
+    border: 'none',
+    borderRadius: 8,
+    cursor: primaryEnabled ? 'pointer' : 'default',
+  }
+
+  const secondaryButtonStyle = {
+    width: '100%',
+    padding: '10px 0',
+    fontSize: 13,
+    fontWeight: 500,
+    fontFamily: 'inherit',
+    marginTop: 12,
+    background: 'transparent',
+    color: 'var(--text-dim)',
+    border: 'none',
+    cursor: 'pointer',
   }
 
   return (
-    <div style={{ minHeight: '100vh', display: 'flex', alignItems: 'center', justifyContent: 'center', background: '#f5f5f4' }}>
-      <div style={{ width: 400, background: '#fff', borderRadius: 12, padding: '48px 40px', boxShadow: '0 1px 3px rgba(0,0,0,0.08)' }}>
-        <div style={{ display: 'flex', alignItems: 'center', gap: 10, marginBottom: 8 }}>
-          <div style={{ width: 36, height: 36, borderRadius: 8, background: '#2D5A1B', display: 'flex', alignItems: 'center', justifyContent: 'center', color: '#fff', fontSize: 14, fontWeight: 600 }}>CC</div>
-          <span style={{ fontSize: 18, fontWeight: 600, color: '#2D5A1B' }}>Care Club</span>
+    <div
+      style={{
+        minHeight: '100vh',
+        display: 'flex',
+        alignItems: 'center',
+        justifyContent: 'center',
+        background: 'var(--bg)',
+        padding: 20,
+      }}
+    >
+      <div
+        style={{
+          width: 400,
+          maxWidth: '100%',
+          background: 'var(--surface)',
+          border: '1px solid var(--border-soft)',
+          borderRadius: 14,
+          padding: '48px 40px',
+          boxShadow: 'var(--shadow)',
+        }}
+      >
+        <div
+          style={{
+            fontSize: 10.5,
+            letterSpacing: '0.22em',
+            textTransform: 'uppercase',
+            color: 'var(--text-faint)',
+            fontWeight: 600,
+          }}
+        >
+          Vitalis Healthcare
         </div>
-        <p style={{ fontSize: 14, color: '#666', marginBottom: 32 }}>Vitalis Healthcare Services</p>
+        <div
+          style={{
+            fontFamily: 'var(--font-display), serif',
+            fontSize: 34,
+            fontWeight: 600,
+            color: 'var(--text)',
+            marginTop: 2,
+            marginBottom: 32,
+          }}
+        >
+          Care <em style={{ fontStyle: 'italic', fontWeight: 500, color: 'var(--champagne)' }}>Club</em>
+        </div>
 
         {sent ? (
           <div style={{ textAlign: 'center', padding: '20px 0' }}>
-            <p style={{ fontSize: 16, fontWeight: 500, marginBottom: 8 }}>Check your email</p>
-            <p style={{ fontSize: 14, color: '#666' }}>We sent a magic link to <strong>{email}</strong></p>
+            <p style={{ fontFamily: 'var(--font-display), serif', fontSize: 21, fontWeight: 600, margin: '0 0 8px' }}>
+              Check your email
+            </p>
+            <p style={{ fontSize: 14, color: 'var(--text-dim)', margin: 0 }}>
+              We sent a magic link to <strong style={{ color: 'var(--text)' }}>{email}</strong>
+            </p>
           </div>
         ) : (
           <>
-            <label style={{ display: 'block', fontSize: 13, fontWeight: 500, color: '#333', marginBottom: 6 }}>Email address</label>
+            <label style={labelStyle}>Email address</label>
             <input type="email" value={email} onChange={(e) => setEmail(e.target.value)}
               placeholder="you@vitalishealthcare.com" style={inputStyle} />
 
             {mode === 'password' && (
               <>
-                <label style={{ display: 'block', fontSize: 13, fontWeight: 500, color: '#333', marginBottom: 6 }}>Password</label>
+                <label style={labelStyle}>Password</label>
                 <input type="password" value={password} onChange={(e) => setPassword(e.target.value)}
                   onKeyDown={(e) => e.key === 'Enter' && email && password && handlePassword()}
                   placeholder="Enter your password" style={inputStyle} />
               </>
             )}
 
-            {error && <p style={{ fontSize: 13, color: '#c00', marginBottom: 12 }}>{error}</p>}
+            {error && <p style={{ fontSize: 13, color: 'var(--red)', marginBottom: 12 }}>{error}</p>}
 
             {mode === 'password' ? (
               <>
-                <button onClick={handlePassword} disabled={!email || !password || loading}
-                  style={{ width: '100%', padding: '10px 0', fontSize: 14, fontWeight: 500,
-                    background: email && password && !loading ? '#2D5A1B' : '#ccc', color: '#fff',
-                    border: 'none', borderRadius: 8, cursor: email && password && !loading ? 'pointer' : 'default' }}>
+                <button onClick={handlePassword} disabled={!email || !password || loading} style={primaryButtonStyle}>
                   {loading ? 'Signing in...' : 'Sign in'}
                 </button>
-                <button onClick={() => { setMode('magic'); setError('') }}
-                  style={{ width: '100%', padding: '10px 0', fontSize: 13, marginTop: 12,
-                    background: 'transparent', color: '#2D5A1B', border: 'none', cursor: 'pointer' }}>
+                <button onClick={() => { setMode('magic'); setError('') }} style={secondaryButtonStyle}>
                   Email me a magic link instead
                 </button>
               </>
             ) : (
               <>
-                <button onClick={handleMagic} disabled={!email || loading}
-                  style={{ width: '100%', padding: '10px 0', fontSize: 14, fontWeight: 500,
-                    background: email && !loading ? '#2D5A1B' : '#ccc', color: '#fff',
-                    border: 'none', borderRadius: 8, cursor: email && !loading ? 'pointer' : 'default' }}>
+                <button onClick={handleMagic} disabled={!email || loading} style={primaryButtonStyle}>
                   {loading ? 'Sending...' : 'Send magic link'}
                 </button>
-                <button onClick={() => { setMode('password'); setError('') }}
-                  style={{ width: '100%', padding: '10px 0', fontSize: 13, marginTop: 12,
-                    background: 'transparent', color: '#2D5A1B', border: 'none', cursor: 'pointer' }}>
+                <button onClick={() => { setMode('password'); setError('') }} style={secondaryButtonStyle}>
                   Sign in with password instead
                 </button>
               </>

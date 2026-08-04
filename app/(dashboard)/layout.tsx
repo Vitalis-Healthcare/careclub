@@ -23,25 +23,10 @@ export default async function DashboardLayout({ children }: { children: React.Re
   const displayName = profile?.full_name || user.email || ''
 
   return (
-    <div style={{ display: 'flex', minHeight: '100vh' }}>
-      <Sidebar role={role} />
-      <main style={{ flex: 1, background: '#f5f5f4', overflowY: 'auto' }}>
-        <header style={{
-          display: 'flex', alignItems: 'center', justifyContent: 'flex-end',
-          padding: '12px 28px', borderBottom: '1px solid #e8e8e6', background: '#fff',
-        }}>
-          <div style={{ display: 'flex', alignItems: 'center', gap: 10 }}>
-            <span style={{ fontSize: 13, color: '#666' }}>{displayName}</span>
-            <div style={{
-              width: 32, height: 32, borderRadius: '50%', background: '#2D5A1B',
-              color: '#fff', display: 'flex', alignItems: 'center', justifyContent: 'center',
-              fontSize: 12, fontWeight: 500,
-            }}>
-              {displayName.split(' ').map((n: string) => n[0]).join('').slice(0, 2).toUpperCase()}
-            </div>
-          </div>
-        </header>
-        <div style={{ padding: '24px 28px' }}>
+    <div style={{ display: 'flex', minHeight: '100vh', background: 'var(--bg)' }}>
+      <Sidebar role={role} displayName={displayName} />
+      <main style={{ flex: 1, overflowY: 'auto' }}>
+        <div style={{ padding: '40px 48px 64px', maxWidth: 1120 }}>
           {children}
         </div>
       </main>

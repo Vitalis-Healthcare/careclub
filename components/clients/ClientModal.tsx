@@ -88,6 +88,7 @@ export default function ClientModal({
   const [lngStr, setLngStr] = useState(client?.lng != null ? String(client.lng) : '')
   const [emergencyName, setEmergencyName] = useState(client?.emergency_contact_name || '')
   const [emergencyPhone, setEmergencyPhone] = useState(client?.emergency_contact_phone || '')
+  const [emergencyEmail, setEmergencyEmail] = useState(client?.emergency_contact_email || '')
   const [tierId, setTierId] = useState(client?.tier_id || '')
   const [clusterId, setClusterId] = useState(client?.cluster_id || '')
   const [status, setStatus] = useState<MemberStatus>(client?.status || 'waitlist')
@@ -130,6 +131,9 @@ export default function ClientModal({
       if (lngNum === null || !Number.isFinite(lngNum) || lngNum < -78 || lngNum > -76) {
         return 'Longitude must be between -78 and -76 (the Maryland service area).'
       }
+    }
+    if (emergencyEmail.trim() && !/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(emergencyEmail.trim())) {
+      return 'The emergency contact email does not look valid.'
     }
     if (!tierId) return 'Pick a membership tier.'
     if (mode === 'edit' && status === 'active' && !billingStartDate) {
@@ -187,6 +191,7 @@ export default function ClientModal({
       email: email.trim() || null,
       emergency_contact_name: emergencyName.trim() || null,
       emergency_contact_phone: emergencyPhone.trim() || null,
+      emergency_contact_email: emergencyEmail.trim() || null,
       cluster_id: clusterId || null,
       tier_id: tierId,
     }
@@ -337,6 +342,9 @@ export default function ClientModal({
             <input value={emergencyPhone} onChange={(e) => setEmergencyPhone(e.target.value)} placeholder="(301) 555-0101" style={inputStyle} />
           </div>
         </div>
+
+        <label style={labelStyle}>Emergency contact email</label>
+        <input value={emergencyEmail} onChange={(e) => setEmergencyEmail(e.target.value)} placeholder="kwame@example.com" style={inputStyle} />
 
         <label style={labelStyle}>Membership tier</label>
         <div style={{ display: 'grid', gridTemplateColumns: 'repeat(3, 1fr)', gap: 10, marginBottom: 16 }}>

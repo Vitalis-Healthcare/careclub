@@ -21,6 +21,7 @@ export interface ClientEnrollInput {
   email: string | null
   emergency_contact_name: string | null
   emergency_contact_phone: string | null
+  emergency_contact_email: string | null
   cluster_id: string | null
   tier_id: string
   status: 'waitlist'
@@ -36,6 +37,7 @@ export interface ClientUpdateInput {
   email: string | null
   emergency_contact_name: string | null
   emergency_contact_phone: string | null
+  emergency_contact_email: string | null
   cluster_id: string | null
   tier_id: string
   status: ClientStatus
@@ -51,6 +53,7 @@ interface CommonFields {
   email: string | null
   emergency_contact_name: string | null
   emergency_contact_phone: string | null
+  emergency_contact_email: string | null
   cluster_id: string | null
   tier_id: string
 }
@@ -100,6 +103,12 @@ function parseCommon(b: Record<string, unknown>): { fields: CommonFields | null;
   const emergencyPhone = typeof b.emergency_contact_phone === 'string' && b.emergency_contact_phone.trim() !== ''
     ? b.emergency_contact_phone.trim()
     : null
+  const emergencyEmail = typeof b.emergency_contact_email === 'string' && b.emergency_contact_email.trim() !== ''
+    ? b.emergency_contact_email.trim()
+    : null
+  if (emergencyEmail && !EMAIL_RE.test(emergencyEmail)) {
+    return { fields: null, error: 'The emergency contact email does not look valid.' }
+  }
 
   const tierId = typeof b.tier_id === 'string' ? b.tier_id.trim() : ''
   if (!tierId) return { fields: null, error: 'Pick a membership tier.' }
@@ -118,6 +127,7 @@ function parseCommon(b: Record<string, unknown>): { fields: CommonFields | null;
       email,
       emergency_contact_name: emergencyName,
       emergency_contact_phone: emergencyPhone,
+      emergency_contact_email: emergencyEmail,
       cluster_id: clusterId,
       tier_id: tierId,
     },

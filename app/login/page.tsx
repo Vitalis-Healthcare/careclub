@@ -22,12 +22,23 @@ export default function LoginPage() {
 
   const handleMagic = async () => {
     setLoading(true); setError('')
-    const supabase = createClient()
-    const { error: e } = await supabase.auth.signInWithOtp({
-      email,
-      options: { emailRedirectTo: `${window.location.origin}/auth/callback` },
-    })
-    if (e) { setError(e.message); setLoading(false) } else { setSent(true); setLoading(false) }
+    try {
+      const res = await fetch('/api/auth/link', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ email }),
+      })
+      if (!res.ok) {
+        const data = await res.json()
+        setError(data.error || 'Could not send the link. Please try again.')
+        setLoading(false)
+        return
+      }
+      setSent(true); setLoading(false)
+    } catch {
+      setError('Could not send the link. Please try again.')
+      setLoading(false)
+    }
   }
 
   const inputStyle = {
@@ -133,8 +144,10 @@ export default function LoginPage() {
             <p style={{ fontFamily: 'var(--font-display), serif', fontSize: 21, fontWeight: 600, margin: '0 0 8px' }}>
               Check your email
             </p>
-            <p style={{ fontSize: 14, color: 'var(--text-dim)', margin: 0 }}>
-              We sent a magic link to <strong style={{ color: 'var(--text)' }}>{email}</strong>
+            <p style={{ fontSize: 14, color: 'var(--text-dim)', margin: 0, lineHeight: 1.55 }}>
+              If <strong style={{ color: 'var(--text)' }}>{email}</strong> belongs to a team
+              account, a sign-in link from Vitalis Care Club is on its way. It works once
+              and expires after about an hour.
             </p>
           </div>
         ) : (
@@ -160,13 +173,13 @@ export default function LoginPage() {
                   {loading ? 'Signing in...' : 'Sign in'}
                 </button>
                 <button onClick={() => { setMode('magic'); setError('') }} style={secondaryButtonStyle}>
-                  Email me a magic link instead
+                  Email me a sign-in link instead
                 </button>
               </>
             ) : (
               <>
                 <button onClick={handleMagic} disabled={!email || loading} style={primaryButtonStyle}>
-                  {loading ? 'Sending...' : 'Send magic link'}
+                  {loading ? 'Sending...' : 'Send sign-in link'}
                 </button>
                 <button onClick={() => { setMode('password'); setError('') }} style={secondaryButtonStyle}>
                   Sign in with password instead

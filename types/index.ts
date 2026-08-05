@@ -151,3 +151,17 @@ export interface StripeEvent {
   type: string
   received_at: string
 }
+
+
+export interface Lead {
+  id: string
+  name: string
+  phone: string | null
+  email: string | null
+  area: 'silver_spring' | 'rockville_germantown' | 'annapolis' | 'baltimore_county'
+  care_for: 'myself' | 'parent' | 'spouse_partner' | 'other' | null
+  care_recipient_name: string | null
+  note: string | null
+  status: 'new' | 'contacted' | 'converted' | 'closed'
+  created_at: string
+}

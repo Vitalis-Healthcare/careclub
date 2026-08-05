@@ -71,6 +71,8 @@ export default function ClientModal({
   clusterOptions,
   geocodeEnabled,
   onClose,
+  prefill,
+  onSaved,
 }: {
   mode: 'create' | 'edit'
   client: Client | null
@@ -78,11 +80,16 @@ export default function ClientModal({
   clusterOptions: ClusterPlacementOption[]
   geocodeEnabled: boolean
   onClose: () => void
+  // v0.1.14: seed name/phone/email when enrolling from a sign-up lead.
+  prefill?: { name?: string; phone?: string; email?: string } | null
+  // v0.1.14: fired ONLY on a successful save, before onClose — lets the
+  // sign-ups inbox mark the source lead converted.
+  onSaved?: () => void
 }) {
   const router = useRouter()
-  const [name, setName] = useState(client?.name || '')
-  const [phone, setPhone] = useState(client?.phone || '')
-  const [email, setEmail] = useState(client?.email || '')
+  const [name, setName] = useState(client?.name || prefill?.name || '')
+  const [phone, setPhone] = useState(client?.phone || prefill?.phone || '')
+  const [email, setEmail] = useState(client?.email || prefill?.email || '')
   const [address, setAddress] = useState(client?.address || '')
   const [latStr, setLatStr] = useState(client?.lat != null ? String(client.lat) : '')
   const [lngStr, setLngStr] = useState(client?.lng != null ? String(client.lng) : '')
@@ -214,6 +221,7 @@ export default function ClientModal({
         setSaving(false)
         return
       }
+      if (onSaved) onSaved()
       router.refresh()
       onClose()
     } catch {

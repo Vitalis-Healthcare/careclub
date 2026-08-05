@@ -69,7 +69,7 @@ export default function ShiftCard({
             color: conflict
               ? 'var(--amber)'
               : completed
-                ? 'var(--green-bright)'
+                ? 'var(--green-text)'
                 : noShow
                   ? 'var(--amber)'
                   : canceled

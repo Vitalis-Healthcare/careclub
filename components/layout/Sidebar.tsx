@@ -4,7 +4,7 @@ import { usePathname } from 'next/navigation'
 import Link from 'next/link'
 import {
   LayoutDashboard, Calendar, Map, MapPin, Network,
-  Users, Heart, Clock, Settings
+  Users, Heart, Clock, Settings, Inbox
 } from 'lucide-react'
 import type { UserRole } from '@/types'
 import ThemeSwitch from '@/components/theme/ThemeSwitch'
@@ -23,6 +23,7 @@ const NAV_ITEMS: {
     { href: '/clusters', label: 'Clusters', icon: Network },
   ]},
   { section: 'The people', items: [
+    { href: '/signups', label: 'Sign-ups', icon: Inbox },
     { href: '/clients', label: 'Club members', icon: Users },
     { href: '/caregivers', label: 'Caregivers', icon: Heart },
     { href: '/open-slots', label: 'Open slots', icon: Clock },

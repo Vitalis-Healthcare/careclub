@@ -15,6 +15,7 @@ const body = DM_Sans({
 })
 
 export const metadata: Metadata = {
+  metadataBase: new URL(process.env.NEXT_PUBLIC_APP_URL ?? 'https://careclub.vitalishealthcare.com'),
   title: 'Care Club — Vitalis Healthcare',
   description: 'Cluster-based subscription home care scheduling',
 }

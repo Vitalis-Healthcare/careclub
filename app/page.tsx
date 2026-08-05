@@ -13,6 +13,30 @@ export const metadata: Metadata = {
   title: 'Vitalis Care Club — Membership home care in Silver Spring, Maryland',
   description:
     'Care Club members receive two-hour home care visits on a standing weekly schedule from one dedicated, Maryland-certified caregiver. Now enrolling founding memberships in Silver Spring.',
+  openGraph: {
+    title: 'Vitalis Care Club — Membership home care in Silver Spring, Maryland',
+    description:
+      'Care Club members receive two-hour home care visits on a standing weekly schedule from one dedicated, Maryland-certified caregiver. Now enrolling founding memberships in Silver Spring.',
+    url: '/',
+    siteName: 'Vitalis Care Club',
+    type: 'website',
+    locale: 'en_US',
+    images: [
+      {
+        url: '/careclub-og.jpg',
+        width: 1200,
+        height: 630,
+        alt: 'A Care Club caregiver walking arm in arm with a Club member — the same caregiver, at the same hour, every week.',
+      },
+    ],
+  },
+  twitter: {
+    card: 'summary_large_image',
+    title: 'Vitalis Care Club — Membership home care in Silver Spring, Maryland',
+    description:
+      'Care Club members receive two-hour home care visits on a standing weekly schedule from one dedicated, Maryland-certified caregiver. Now enrolling founding memberships in Silver Spring.',
+    images: ['/careclub-og.jpg'],
+  },
 }
 
 const LIGHT_PIN: React.CSSProperties & Record<string, string> = {

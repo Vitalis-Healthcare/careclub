@@ -1,10 +1,10 @@
 'use client'
 
-import { usePathname } from 'next/navigation'
+import { usePathname, useRouter } from 'next/navigation'
 import Link from 'next/link'
 import {
   LayoutDashboard, Calendar, Map, MapPin, Network,
-  Users, Heart, Clock, Settings, Inbox
+  Users, Heart, Clock, Settings, Inbox, LogOut
 } from 'lucide-react'
 import type { UserRole } from '@/types'
 import ThemeSwitch from '@/components/theme/ThemeSwitch'
@@ -35,6 +35,17 @@ const NAV_ITEMS: {
 
 export default function Sidebar({ role, displayName }: { role: UserRole; displayName: string }) {
   const pathname = usePathname()
+  const router = useRouter()
+
+  const signOut = async () => {
+    try {
+      await fetch('/auth/signout', { method: 'POST' })
+    } catch {
+      // Even if the request fails, send them to the entrance.
+    }
+    router.push('/login')
+    router.refresh()
+  }
 
   const initials = displayName
     .split(' ')
@@ -176,6 +187,28 @@ export default function Sidebar({ role, displayName }: { role: UserRole; display
               {role === 'admin' ? 'Administrator' : 'Staff'}
             </div>
           </div>
+          <button
+            onClick={signOut}
+            title="Sign out"
+            aria-label="Sign out"
+            style={{
+              marginLeft: 'auto',
+              display: 'flex',
+              alignItems: 'center',
+              justifyContent: 'center',
+              width: 30,
+              height: 30,
+              padding: 0,
+              background: 'transparent',
+              color: 'var(--text-faint)',
+              border: '1px solid var(--border)',
+              borderRadius: 8,
+              cursor: 'pointer',
+              flexShrink: 0,
+            }}
+          >
+            <LogOut size={14} />
+          </button>
         </div>
       </div>
     </aside>

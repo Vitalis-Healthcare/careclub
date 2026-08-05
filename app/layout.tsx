@@ -33,6 +33,7 @@ const tokenCss = `
   --text-faint: #5F6E64;
   --green-bright: #7AB52A;
   --green-dark: #2D5A1B;
+  --green-text: #7AB52A;
   --green-glow: rgba(122, 181, 42, 0.12);
   --champagne: #C9A96A;
   --champagne-glow: rgba(201, 169, 106, 0.14);
@@ -55,6 +56,7 @@ const tokenCss = `
   --text-faint: #A3AC9C;
   --green-bright: #5E9420;
   --green-dark: #2D5A1B;
+  --green-text: #4A7A19;
   --green-glow: rgba(94, 148, 32, 0.10);
   --champagne: #A8863F;
   --champagne-glow: rgba(168, 134, 63, 0.12);

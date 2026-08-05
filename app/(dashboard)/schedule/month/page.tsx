@@ -75,7 +75,7 @@ export default async function ScheduleMonthPage({
   }
 
   const statusColor = (status: string, conflictless = true): string => {
-    if (status === 'completed') return 'var(--green-bright)'
+    if (status === 'completed') return 'var(--green-text)'
     if (status === 'canceled') return 'var(--red)'
     if (status === 'no_show') return 'var(--amber)'
     return conflictless ? 'var(--text-dim)' : 'var(--amber)'

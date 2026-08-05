@@ -147,7 +147,7 @@ export default function HourBankCard({
               </span>
             </div>
             <p style={{ fontSize: 11.5, color: 'var(--text-faint)', margin: '2px 0 0' }}>
-              Accrued charges are tracked here now and will bill at period close alongside the renewal in an upcoming release.
+              Accrued charges bill automatically at period close, alongside the renewal.
             </p>
           </div>
 
@@ -168,6 +168,14 @@ export default function HourBankCard({
                       {p.overageHours > 0 ? ` · overage ${formatHours(p.overageHours)} hrs (${formatMoney(p.overageHours * overageRateCents)})` : ''}
                       {p.weekendHours > 0 ? ` · weekend ${formatHours(p.weekendHours)} hrs (${formatMoney(p.weekendHours * weekendRateCents)})` : ''}
                       {` · ${p.freeCancelsRemaining} free cancels left`}
+                      {p.committedHours + p.committedWeekendHours > 0 && (
+                        <span
+                          style={{ color: 'var(--amber)', fontWeight: 600 }}
+                          title="Visits in this closed period were never marked completed, canceled, or no-show — the hour bank billed without them."
+                        >
+                          {` · ${formatHours(p.committedHours + p.committedWeekendHours)} hrs unresolved`}
+                        </span>
+                      )}
                     </span>
                   </div>
                 ))}

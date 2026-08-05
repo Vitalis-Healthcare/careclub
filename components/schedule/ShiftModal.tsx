@@ -82,7 +82,7 @@ export default function ShiftModal({
   }
 
   const statusLine = () => {
-    if (shift.status === 'completed') return { text: 'Completed', color: 'var(--green-bright)' }
+    if (shift.status === 'completed') return { text: 'Completed', color: 'var(--green-text)' }
     if (shift.status === 'no_show') return { text: 'No-show', color: 'var(--amber)' }
     if (shift.status === 'canceled') {
       return { text: `Canceled · ${shift.cancel_type === 'forfeit' ? 'forfeited' : 'free cancel'}`, color: 'var(--red)' }
